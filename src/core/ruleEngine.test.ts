@@ -97,4 +97,38 @@ describe("matchRules", () => {
 
     expect(result.tagMatches).toEqual([]);
   });
+
+  it("returns all matches when multiple rules hit the same tag", () => {
+    const result = matchRules(
+      [createWork()],
+      [
+        createRule({ id: "r-highlight", pattern: "alpha/beta", action: "highlight" }),
+        createRule({ id: "r-warn", pattern: "alpha*", matchMode: "wildcard", action: "warn" })
+      ]
+    );
+
+    expect(result.tagMatches).toEqual([
+      { tagId: "tag-1", ruleId: "r-highlight", action: "highlight" },
+      { tagId: "tag-1", ruleId: "r-warn", action: "warn" }
+    ]);
+  });
+
+  it("sets hasWarn and hasHideWork flags in work summaries", () => {
+    const result = matchRules(
+      [createWork()],
+      [
+        createRule({ id: "r-warn", pattern: "alpha/beta", action: "warn" }),
+        createRule({ id: "r-hide", pattern: "slow burn", action: "hideWork" })
+      ]
+    );
+
+    expect(result.workSummaries).toEqual([
+      {
+        workId: "work-1",
+        matchedRuleIds: expect.arrayContaining(["r-warn", "r-hide"]),
+        hasWarn: true,
+        hasHideWork: true
+      }
+    ]);
+  });
 });

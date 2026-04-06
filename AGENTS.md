@@ -6,15 +6,16 @@ AO3 Tag Highlighter — a Chrome extension (Manifest V3) for AO3 tag-based highl
 
 ## Current Phase
 
-MVP planning → initial implementation (V1).
-No code has been written yet; documentation-first workflow in progress.
+Initial implementation in progress (V1).
+Core logic modules (parser, rule engine, normalizer, wildcard, priority) are implemented and tested.
+Next: renderer, storage, page interaction, popup/options UI.
 
 ## Tech Stack
 
 - Chrome Extension Manifest V3
 - TypeScript (strict)
 - Vanilla DOM + CSS for all UI (no React / Vue / framework in MVP)
-- Bundler: Vite or esbuild (to be decided in ADR)
+- Bundler: Vite
 - Storage: `chrome.storage.local`
 
 ## In Scope (MVP)
@@ -99,7 +100,7 @@ npm run lint
 npm run test
 ```
 
-_(Commands are placeholders until the project scaffold is created.)_
+All commands are functional. Tests use Vitest with jsdom environment.
 
 ## Working Rules
 

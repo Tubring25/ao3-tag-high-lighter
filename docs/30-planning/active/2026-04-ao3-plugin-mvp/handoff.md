@@ -20,21 +20,25 @@
 - **`src/core/priority.ts`** — action 优先级解析（hideWork > warn > highlight > mute）
 - **`src/core/ruleEngine.ts`** — 规则匹配引擎（exact / contains / wildcard + category 过滤 + disabled 跳过）
 - **`src/content/ao3Parser.ts`** — AO3 页面解析（listing 页 + 单作品详情页，提取 tag 文本 / 分类 / 标准化）
-- `npm run test` 全部 13 个测试通过（4 个测试文件）
+- `npm run test` 全部 20 个测试通过（4 个测试文件）
+- 已新增 review 文档：`review-2026-04-07-claude-progress.md`
+- Codex review 3 个 findings 已处理：
+  - F1: ruleEngine 补充多规则冲突测试 + workSummary flags 测试；D005 决策：优先级收敛在渲染层
+  - F2: ao3Parser 补充边界测试（无结构 / 无 id / 无可识别 category / 多作品 / 同类多 tag）
+  - F3: AGENTS.md + project-brief.md 阶段描述更新为"初始实现进行中"
 
 ## 当前状态
 
 第 1 阶段核心逻辑模块（B1–B4、C2–C7）已全部实现并通过测试。工程基线：
 
 - `npm run build` 通过
-- `npm run test` 全部 PASS（13/13）
+- `npm run test` 全部 PASS（20/20）
 
 ## 下一步
 
 1. 实现 `src/content/renderer.ts`（D1–D5：highlight / mute / warn / hideWork 样式渲染 + 重算清理）
 2. 实现 `src/storage/ruleStorage.ts` 和 `src/storage/settingsStorage.ts`（E1–E3：CRUD + 数据校验）
-3. 实现 hover 交互（F1–F4：hover 按钮、快速添加菜单、即时重渲染）
-4. 实现 popup / options UI（G1–G3、H1–H6）
+3. 实现 hover 交互（F1–F4）与 popup / options UI（G、H 组）
 
 ## 先读什么
 

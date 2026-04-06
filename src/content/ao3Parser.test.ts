@@ -110,4 +110,95 @@ describe("parseAo3Works", () => {
       }
     ]);
   });
+
+  it("returns empty array for unrecognized page structure", () => {
+    document.body.innerHTML = `<div><p>Not an AO3 page</p></div>`;
+    expect(parseAo3Works(document)).toEqual([]);
+  });
+
+  it("handles a work with no recognized tag categories", () => {
+    document.body.innerHTML = `
+      <ol class="work index group">
+        <li id="work_456" class="work blurb group">
+          <ul class="tags commas">
+            <li class="warnings">
+              <a class="tag" href="/tags/No%20Warnings/works">No Archive Warnings Apply</a>
+            </li>
+          </ul>
+        </li>
+      </ol>
+    `;
+
+    const result = parseAo3Works(document);
+    expect(result).toEqual([{ id: "work_456", element: expect.any(HTMLElement), tags: [] }]);
+  });
+
+  it("parses multiple works from a listing page", () => {
+    document.body.innerHTML = `
+      <ol class="work index group">
+        <li id="work_1" class="work blurb group">
+          <ul class="tags commas">
+            <li class="freeforms">
+              <a class="tag" href="/tags/Fluff/works">Fluff</a>
+            </li>
+          </ul>
+        </li>
+        <li id="work_2" class="work blurb group">
+          <ul class="tags commas">
+            <li class="relationships">
+              <a class="tag" href="/tags/A*s*B/works">A/B</a>
+            </li>
+          </ul>
+        </li>
+      </ol>
+    `;
+
+    const result = parseAo3Works(document);
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe("work_1");
+    expect(result[0].tags).toHaveLength(1);
+    expect(result[0].tags[0].category).toBe("freeform");
+    expect(result[1].id).toBe("work_2");
+    expect(result[1].tags).toHaveLength(1);
+    expect(result[1].tags[0].category).toBe("relationship");
+  });
+
+  it("skips work blurbs that have no id", () => {
+    document.body.innerHTML = `
+      <ol class="work index group">
+        <li class="work blurb group">
+          <ul class="tags commas">
+            <li class="freeforms">
+              <a class="tag" href="/tags/Angst/works">Angst</a>
+            </li>
+          </ul>
+        </li>
+      </ol>
+    `;
+
+    expect(parseAo3Works(document)).toEqual([]);
+  });
+
+  it("handles multiple tags in the same category with sequential ids", () => {
+    document.body.innerHTML = `
+      <ol class="work index group">
+        <li id="work_789" class="work blurb group">
+          <ul class="tags commas">
+            <li class="characters">
+              <a class="tag" href="/tags/Alice/works">Alice</a>
+            </li>
+            <li class="characters">
+              <a class="tag" href="/tags/Bob/works">Bob</a>
+            </li>
+          </ul>
+        </li>
+      </ol>
+    `;
+
+    const result = parseAo3Works(document);
+    expect(result[0].tags).toEqual([
+      expect.objectContaining({ id: "work_789:character:0", text: "Alice" }),
+      expect.objectContaining({ id: "work_789:character:1", text: "Bob" })
+    ]);
+  });
 });
