@@ -1,0 +1,12 @@
+model = "gpt-5.4"
+
+[instructions]
+extra = """
+Before starting any task, read AGENTS.md and the active task checklist at
+docs/30-planning/active/2026-04-ao3-plugin-mvp/checklist.md.
+
+After completing a task, update checklist.md (check off items) and
+handoff.md (record what was done and what to do next).
+
+Run `npm run build` and `npm run test` to verify before finishing.
+"""
