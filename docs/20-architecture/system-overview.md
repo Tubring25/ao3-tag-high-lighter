@@ -54,6 +54,9 @@ Chrome 扩展本体：
 ## 目录结构
 
 ```
+popup.html                 # popup HTML 入口，build 后位于 dist 根目录
+options.html               # options HTML 入口，build 后位于 dist 根目录
+
 src/
   background/
     index.ts              # service worker 入口
@@ -78,12 +81,10 @@ src/
     settingsStorage.ts     # 设置读写封装
 
   popup/
-    index.html
     index.ts
     popup.css
 
   options/
-    index.html
     index.ts
     options.css
 

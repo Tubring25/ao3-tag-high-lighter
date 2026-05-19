@@ -7,8 +7,8 @@ AO3 Tag Highlighter — a Chrome extension (Manifest V3) for AO3 tag-based highl
 ## Current Phase
 
 Initial implementation in progress (V1).
-Core logic modules (parser, rule engine, normalizer, wildcard, priority) are implemented and tested.
-Next: renderer, storage, page interaction, popup/options UI.
+Core logic, renderer, and storage modules are implemented and tested.
+Next: content script entry wiring, background message forwarding, page interaction, popup/options UI.
 
 ## Tech Stack
 

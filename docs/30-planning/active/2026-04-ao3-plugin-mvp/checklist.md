@@ -15,14 +15,14 @@
 - [x] C5 — category 过滤
 - [x] C6 — 优先级解析
 - [x] C7 — disabled 规则过滤
-- [ ] D1 — highlight 样式
-- [ ] D2 — mute 样式
-- [ ] D3 — warn 样式
-- [ ] D4 — hideWork 样式
-- [ ] D5 — 重算清理
-- [ ] E1 — 规则 CRUD 封装
-- [ ] E2 — 设置读写封装
-- [ ] E3 — 数据校验
+- [x] D1 — highlight 样式
+- [x] D2 — mute 样式
+- [x] D3 — warn 样式
+- [x] D4 — hideWork 样式
+- [x] D5 — 重算清理
+- [x] E1 — 规则 CRUD 封装
+- [x] E2 — 设置读写封装
+- [x] E3 — 数据校验
 
 ## 第 2 阶段：页面交互
 

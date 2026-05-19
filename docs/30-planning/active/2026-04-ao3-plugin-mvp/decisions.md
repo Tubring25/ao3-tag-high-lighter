@@ -33,3 +33,9 @@
 - renderer 需要完整的命中信息来展示"被哪些规则命中"（如 tooltip / popup 统计）。
 - 架构约束 #2 "匹配引擎 ↔ 渲染层分离"要求 match 阶段是纯检测，不含渲染决策。
 - `WorkMatchSummary.hasWarn / hasHideWork` 已在 engine 侧提供 work 级快速判断，够用。
+
+## D006 — Popup / Options HTML 使用根目录构建入口
+
+**日期：** 2026-05-11
+**决策：** `popup.html` 和 `options.html` 放在仓库根目录作为 Vite HTML 入口，页面逻辑和样式仍放在 `src/popup/`、`src/options/`。
+**理由：** Chrome extension manifest 的 popup/options 路径相对 `dist/` 根目录。根目录 HTML 入口会稳定输出为 `dist/popup.html` 和 `dist/options.html`，避免 manifest 暴露源码目录结构或引用构建后不存在的路径。
