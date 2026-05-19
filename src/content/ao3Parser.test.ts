@@ -55,6 +55,8 @@ describe("parseAo3Works", () => {
   });
 
   it("parses tags from a single work detail fragment", () => {
+    window.history.pushState(null, "", "/works/12345");
+
     document.body.innerHTML = `
       <div id="workskin">
         <dl class="work meta group">
@@ -79,36 +81,53 @@ describe("parseAo3Works", () => {
 
     expect(parseAo3Works(document)).toEqual([
       {
-        id: "workskin",
+        id: "12345",
         element: expect.any(HTMLElement),
         tags: [
           {
-            id: "workskin:relationship:0",
+            id: "12345:relationship:0",
             text: "Alpha/Beta",
             normalizedText: "alpha/beta",
             category: "relationship",
             element: expect.any(HTMLElement),
-            workId: "workskin"
+            workId: "12345"
           },
           {
-            id: "workskin:character:0",
+            id: "12345:character:0",
             text: "Alice",
             normalizedText: "alice",
             category: "character",
             element: expect.any(HTMLElement),
-            workId: "workskin"
+            workId: "12345"
           },
           {
-            id: "workskin:freeform:0",
+            id: "12345:freeform:0",
             text: "Canon Divergence",
             normalizedText: "canon divergence",
             category: "freeform",
             element: expect.any(HTMLElement),
-            workId: "workskin"
+            workId: "12345"
           }
         ]
       }
     ]);
+  });
+
+  it("returns empty array for work detail pages without a works id in the URL", () => {
+    window.history.pushState(null, "", "/users/example");
+    document.body.innerHTML = `
+      <div id="workskin">
+        <dl class="work meta group">
+          <dd class="freeform tags">
+            <ul class="commas">
+              <li><a class="tag" href="/tags/Fluff/works">Fluff</a></li>
+            </ul>
+          </dd>
+        </dl>
+      </div>
+    `;
+
+    expect(parseAo3Works(document)).toEqual([]);
   });
 
   it("returns empty array for unrecognized page structure", () => {

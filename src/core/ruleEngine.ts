@@ -1,9 +1,15 @@
 import type { MatchResult, ParsedWork, Rule, TagMatch, WorkMatchSummary } from "./types";
 import { normalizeTagText } from "./normalize";
-import { matchesWildcardPattern } from "./wildcard";
+import { compileWildcardPattern } from "./wildcard";
+
+interface PreparedRule {
+  rule: Rule;
+  normalizedPattern: string;
+  wildcardRegex: RegExp | null;
+}
 
 export function matchRules(works: readonly ParsedWork[], rules: readonly Rule[]): MatchResult {
-  const enabledRules = rules.filter((r) => r.enabled);
+  const enabledRules = prepareRules(rules);
   const tagMatches: TagMatch[] = [];
   const workSummaries: WorkMatchSummary[] = [];
 
@@ -13,11 +19,11 @@ export function matchRules(works: readonly ParsedWork[], rules: readonly Rule[])
     let hasHideWork = false;
 
     for (const tag of work.tags) {
-      for (const rule of enabledRules) {
+      for (const preparedRule of enabledRules) {
+        const { rule } = preparedRule;
         if (rule.category !== "all" && rule.category !== tag.category) continue;
 
-        const normalizedPattern = normalizeTagText(rule.pattern);
-        const matched = testMatch(rule.matchMode, normalizedPattern, tag.normalizedText);
+        const matched = testMatch(preparedRule, tag.normalizedText);
 
         if (matched) {
           tagMatches.push({ tagId: tag.id, ruleId: rule.id, action: rule.action });
@@ -41,13 +47,27 @@ export function matchRules(works: readonly ParsedWork[], rules: readonly Rule[])
   return { tagMatches, workSummaries };
 }
 
-function testMatch(mode: Rule["matchMode"], pattern: string, value: string): boolean {
-  switch (mode) {
+function prepareRules(rules: readonly Rule[]): PreparedRule[] {
+  return rules
+    .filter((rule) => rule.enabled)
+    .map((rule) => {
+      const normalizedPattern = normalizeTagText(rule.pattern);
+      return {
+        rule,
+        normalizedPattern,
+        wildcardRegex:
+          rule.matchMode === "wildcard" ? compileWildcardPattern(normalizedPattern) : null,
+      };
+    });
+}
+
+function testMatch(preparedRule: PreparedRule, value: string): boolean {
+  switch (preparedRule.rule.matchMode) {
     case "exact":
-      return value === pattern;
+      return value === preparedRule.normalizedPattern;
     case "contains":
-      return value.includes(pattern);
+      return value.includes(preparedRule.normalizedPattern);
     case "wildcard":
-      return matchesWildcardPattern(pattern, value);
+      return preparedRule.wildcardRegex?.test(value) ?? false;
   }
 }

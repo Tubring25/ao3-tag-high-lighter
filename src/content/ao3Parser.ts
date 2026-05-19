@@ -70,7 +70,9 @@ function parseWorkDetailPage(root: ParentNode): ParsedWork[] {
   const metaDl = root.querySelector("dl.work.meta");
   if (!metaDl) return [];
 
-  const workId = workskin.id;
+  const workId = getWorkDetailId();
+  if (!workId) return [];
+
   const tags: ParsedTag[] = [];
   const categoryCounters: Record<string, number> = {};
 
@@ -97,6 +99,11 @@ function parseWorkDetailPage(root: ParentNode): ParsedWork[] {
   }
 
   return [{ id: workId, element: workskin, tags }];
+}
+
+function getWorkDetailId(): string | null {
+  const match = globalThis.location?.pathname.match(/^\/works\/(\d+)(?:\/|$)/);
+  return match?.[1] ?? null;
 }
 
 function detectListingCategory(li: HTMLElement): ParsedTagCategory | null {
