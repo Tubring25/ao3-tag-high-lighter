@@ -1,3 +1,38 @@
-.ao3-tag-highlighter {
-  outline: 1px solid transparent;
+[data-ao3th-action="highlight"] {
+  background: #fff3a3 !important;
+  border-radius: 3px !important;
+  box-shadow: 0 0 0 2px rgba(155, 115, 0, 0.22) !important;
+}
+
+[data-ao3th-action="mute"] {
+  opacity: 0.45 !important;
+  filter: grayscale(1) !important;
+}
+
+[data-ao3th-warn="true"] {
+  border-left: 4px solid #c2410c !important;
+  box-shadow: inset 0 0 0 1px rgba(194, 65, 12, 0.22) !important;
+}
+
+[data-ao3th-hidden="hide"] {
+  display: none !important;
+}
+
+[data-ao3th-hidden="collapse"]:not([data-ao3th-expanded="true"]) > :not([data-ao3th-collapse-placeholder]) {
+  display: none !important;
+}
+
+.ao3th-collapse-placeholder {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  margin: 0.5rem 0;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #9ca3af;
+  border-radius: 4px;
+  background: #f3f4f6;
+  color: #374151;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
 }
