@@ -1,10 +1,10 @@
 # 03 — Content Script 入口串联
 
-对应文件：`src/content/index.ts`
+对应文件：`src/content/index.ts`、`src/content/contentApp.ts`
 
 ## 职责
 
-`content/index.ts` 是注入 AO3 页面的入口文件，负责：
+`content/index.ts` 是注入 AO3 页面的入口文件，只负责导入 CSS 并启动 `contentApp`。`contentApp.ts` 负责：
 
 1. 读取 settings，判断是否启用
 2. 读取规则
@@ -18,64 +18,51 @@
 
 ```
 content/index.ts
+  ├── content/contentApp.ts       → startContentApp()
+
+content/contentApp.ts
   ├── storage/settingsStorage.ts  → getSettings()
   ├── storage/ruleStorage.ts      → listRules()
   ├── content/ao3Parser.ts        → parseAo3Works()
   ├── core/ruleEngine.ts          → matchRules()
-  ├── content/renderer.ts         → renderMatches(), clearAllRendering()
+  ├── content/renderer.ts         → renderMatches(), clearRenderedMatches()
   ├── content/hoverMenu.ts        → mountHoverMenu()     [阶段 2]
   └── content/pageObserver.ts     → startPageObserver()   [阶段 4]
 ```
 
 ## 实现方案
 
-### 主流程
+### 当前实现结构
+
+`contentApp.ts` 使用依赖注入，测试中可替换 storage / parser / renderer / message listener：
 
 ```typescript
-import { getSettings } from "../storage/settingsStorage";
-import { listRules } from "../storage/ruleStorage";
-import { parseAo3Works } from "./ao3Parser";
-import { matchRules } from "../core/ruleEngine";
-import { renderMatches, clearAllRendering } from "./renderer";
-import type { ParsedWork, Settings, Rule } from "../core/types";
+export async function startContentApp(deps = realDeps): Promise<void> {
+  // 先注册 listener，再做任何 early return，确保 disabled/no-rules 页面后续仍能响应更新。
+  deps.addMessageListener(onMessage);
 
-let cachedWorks: ParsedWork[] = [];
-let cachedRules: Rule[] = [];
-let cachedSettings: Settings | null = null;
-
-async function main(): Promise<void> {
-  // 1. 读取设置
-  cachedSettings = await getSettings();
+  cachedSettings = await deps.getSettings();
   if (!cachedSettings.extensionEnabled) return;
 
-  // 2. 读取规则
-  cachedRules = await listRules();
-  if (cachedRules.length === 0) return; // 没有规则就不渲染
-
-  // 3. 解析页面
-  cachedWorks = parseAo3Works(document);
-
-  // 4. 匹配 + 渲染
+  cachedRules = await deps.listRules();
+  cachedWorks = deps.parseAo3Works(deps.root);
   runMatchAndRender();
-
-  // 5. 挂载 hover（阶段 2 再实现）
-  // mountHoverMenu(cachedWorks, cachedSettings);
-
-  // 6. 启动 observer（阶段 4 再实现）
-  // startPageObserver(onDomChange);
-
-  // 7. 监听消息
-  chrome.runtime.onMessage.addListener(onMessage);
 }
 
 function runMatchAndRender(): void {
   if (!cachedSettings?.extensionEnabled) {
-    clearAllRendering(cachedWorks);
+    clearRenderedMatches(cachedWorks);
+    return;
+  }
+
+  if (cachedWorks.length === 0) return;
+  if (cachedRules.length === 0) {
+    clearRenderedMatches(cachedWorks);
     return;
   }
 
   const result = matchRules(cachedWorks, cachedRules);
-  renderMatches(cachedWorks, result);
+  renderMatches(cachedWorks, result, { hideWorkMode: cachedSettings.hideWorkMode });
 }
 ```
 
@@ -99,7 +86,8 @@ function onMessage(message: RuntimeMessage): void {
 
 async function handleRulesUpdated(): Promise<void> {
   cachedRules = await listRules();
-  // 如果页面还没解析过（比如之前因为没规则而跳过），重新解析
+  if (!cachedSettings?.extensionEnabled) return;
+
   if (cachedWorks.length === 0) {
     cachedWorks = parseAo3Works(document);
   }
@@ -109,17 +97,32 @@ async function handleRulesUpdated(): Promise<void> {
 async function handleSettingsUpdated(): Promise<void> {
   cachedSettings = await getSettings();
   if (!cachedSettings.extensionEnabled) {
-    clearAllRendering(cachedWorks);
+    clearRenderedMatches(cachedWorks);
     return;
+  }
+
+  cachedRules = await listRules();
+  if (cachedWorks.length === 0) {
+    cachedWorks = parseAo3Works(document);
   }
   runMatchAndRender();
 }
 ```
 
+关键点：
+
+- listener 必须先注册，再根据 settings/rules early return。
+- `SETTINGS_UPDATED` 从关闭切回开启时，需要重新读取 rules；若之前未解析页面，还要重新 parse。
+- rules 为空时应清理旧渲染，避免删除最后一条规则后页面仍残留样式。
+- message handler 内部捕获 async 错误并记录日志，不能影响 AO3 页面。
+
 ### 入口调用
 
 ```typescript
-main().catch((err) => {
+import "../styles/content.css";
+import { startContentApp } from "./contentApp";
+
+startContentApp().catch((err) => {
   console.error("[AO3 Tag Highlighter] Init error:", err);
 });
 ```
@@ -154,61 +157,16 @@ Vite 会把 import 的 CSS 提取为 `dist/assets/content.css`，Chrome Extensio
 
 这样每次消息到来只需要重新匹配 + 渲染，不需要每次都重新读 storage + 重新解析 DOM。
 
-## 阶段 1 最小实现
+## 阶段 1 当前完成范围
 
-阶段 1 不需要 hover 和 observer，最小版本只需要：
+阶段 1 已接入真实 storage，不再使用硬编码测试规则。当前 content 最小闭环完成：
 
-```typescript
-import "../styles/content.css"; // 如果用方式 C
-import { getSettings } from "../storage/settingsStorage";
-import { listRules } from "../storage/ruleStorage";
-import { parseAo3Works } from "./ao3Parser";
-import { matchRules } from "../core/ruleEngine";
-import { renderMatches } from "./renderer";
-
-async function main(): Promise<void> {
-  const settings = await getSettings();
-  if (!settings.extensionEnabled) return;
-
-  const rules = await listRules();
-  if (rules.length === 0) return;
-
-  const works = parseAo3Works(document);
-  const result = matchRules(works, rules);
-  renderMatches(works, result);
-}
-
-main().catch(console.error);
-```
-
-如果阶段 1 还没实现 storage，可以先硬编码测试规则：
-
-```typescript
-import type { Rule } from "../core/types";
-
-const TEST_RULES: Rule[] = [
-  {
-    id: "test-1",
-    pattern: "Fluff",
-    action: "highlight",
-    matchMode: "contains",
-    category: "freeform",
-    enabled: true,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-  {
-    id: "test-2",
-    pattern: "Major Character Death",
-    action: "warn",
-    matchMode: "exact",
-    category: "freeform",
-    enabled: true,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-];
-```
+1. 初始化先注册 runtime message listener
+2. 读取 settings，关闭时不解析不渲染
+3. 启用时读取 rules 并解析 AO3 页面
+4. 有规则时匹配并调用 renderer
+5. rules 为空时清理旧渲染
+6. 收到 `RULES_UPDATED` / `SETTINGS_UPDATED` 后重新读取数据并重渲染
 
 ## 调试技巧
 

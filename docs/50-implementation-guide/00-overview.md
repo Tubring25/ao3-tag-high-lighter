@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-以下模块已完成并通过测试（45/45 tests pass）：
+以下模块已完成并通过测试（59/59 tests pass）：
 
 | 模块 | 文件 | 状态 |
 |---|---|---|
@@ -14,6 +14,8 @@
 | AO3 页面解析 | `src/content/ao3Parser.ts` | ✅ 完成 |
 | 页面渲染 | `src/content/renderer.ts` / `src/content/workEffects.ts` | ✅ 完成 |
 | 本地存储 | `src/storage/ruleStorage.ts` / `src/storage/settingsStorage.ts` | ✅ 完成 |
+| Content 最小闭环 | `src/content/contentApp.ts` / `src/content/index.ts` | ✅ 完成 |
+| Background 消息中转 | `src/background/backgroundApp.ts` / `src/background/index.ts` | ✅ 完成 |
 | content 样式 | `src/styles/content.css` | ✅ 完成 |
 
 以下文件存在骨架（stub），需要实现：
@@ -22,8 +24,6 @@
 |---|---|
 | `src/content/hoverMenu.ts` | stub |
 | `src/content/pageObserver.ts` | stub |
-| `src/content/index.ts` | 仅 `console.info` |
-| `src/background/index.ts` | 仅 `console.info` |
 | `src/popup/index.ts` | scaffold HTML |
 | `src/options/index.ts` | scaffold HTML |
 
@@ -34,8 +34,8 @@
   ├── 步骤 1：storage 模块（E1–E3） → 已完成
   ├── 步骤 2：renderer + workEffects（D1–D5） → 已完成
   ├── 步骤 3：CSS 样式 → 已完成
-  ├── 步骤 4：content script 入口串联 → 03-content-entry.md
-  ├── 步骤 5：background service worker → 07-background.md
+  ├── 步骤 4：content script 入口串联 → 已完成
+  ├── 步骤 5：background service worker → 已完成
   └── 步骤 6：manifest / build 配置修正 → 10-manifest-build.md
 
 阶段 2：页面交互

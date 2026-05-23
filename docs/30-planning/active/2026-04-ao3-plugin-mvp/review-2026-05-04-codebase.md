@@ -5,13 +5,13 @@
 
 ## 处理状态
 
-**更新：** 2026-05-11
+**更新：** 2026-05-21
 
 - F1 已修：详情页 workId 改为从 `/works/:id` 提取真实数字 ID
 - F2/F3 已修：ruleEngine 预处理 enabled rules，提前标准化 pattern 并预编译 wildcard regex
 - F4 已修：hideWork collapse 重渲染保留用户展开状态
 - F5 已修：popup/options 输出为 `dist/popup.html` / `dist/options.html`
-- F6 待处理：依赖 storage（E1/E2）完成后接 content/index 最小闭环
+- F6 已修：content/index 接入 contentApp，完成 settings/rules → parser → ruleEngine → renderer 最小闭环；background 已实现 AO3 tab 消息中转
 
 ---
 
@@ -52,6 +52,7 @@
 - **文件：** `src/content/index.ts` L1-3
 - **描述：** 内容脚本入口仅 import CSS + console.info，未接入 parser → ruleEngine → renderer 管线。扩展加载后不会执行任何实际功能。
 - **修复方向：** 依赖 E1/E2（storage）完成后实现：读取 rules + settings → `parseAo3Works(document)` → `matchRules(works, rules)` → `renderMatches(works, result, { hideWorkMode })`。属于"最小闭环"的最后一步。
+- **处理状态：** 已处理。`src/content/index.ts` 现在启动 `contentApp`；`contentApp` 会读取 settings/rules、解析 AO3 页面、执行匹配并渲染，同时监听 `RULES_UPDATED` / `SETTINGS_UPDATED`。`src/background/backgroundApp.ts` 已实现更新消息到 AO3 tabs 的中转。
 
 ---
 

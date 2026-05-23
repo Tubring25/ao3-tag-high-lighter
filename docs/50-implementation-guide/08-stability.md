@@ -219,8 +219,8 @@ startPageObserver(() => {
 
 已在 `01-renderer.md` 中详细说明。核心原则：
 
-1. 每次 `renderMatches` 先调用 `clearAllRendering`
-2. `clearAllRendering` 遍历所有 tag 移除 `ao3th-*` class
+1. 每次 `renderMatches` 先调用 `clearRenderedMatches`
+2. `clearRenderedMatches` 遍历所有 tag 移除 `ao3th-*` class
 3. `clearAllWorkEffects` 遍历所有 work 移除 class + 删除占位条 + 恢复 display
 4. 这样保证每次渲染都是"干净"的全量重绘
 
@@ -231,7 +231,7 @@ startPageObserver(() => {
 ```typescript
 function onDomChange(): void {
   const oldWorks = cachedWorks;
-  clearAllRendering(oldWorks); // 用旧引用清理
+  clearRenderedMatches(oldWorks); // 用旧引用清理
 
   cachedWorks = parseAo3Works(document); // 重新解析
   runMatchAndRender(); // 重新渲染

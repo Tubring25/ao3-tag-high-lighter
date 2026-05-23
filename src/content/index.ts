@@ -1,3 +1,6 @@
 import "../styles/content.css";
+import { startContentApp } from "./contentApp";
 
-console.info("AO3 Tag Highlighter content script loaded.");
+startContentApp().catch((error) => {
+  console.error("[AO3 Tag Highlighter] Init error:", error);
+});

@@ -1,6 +1,6 @@
 # Handoff — 当前状态
 
-**最后更新：** 2026-05-20
+**最后更新：** 2026-05-21
 
 ## 已完成
 
@@ -40,21 +40,24 @@
 - **`src/storage/settingsStorage.ts`** — 设置读写已实现：默认值、partial patch、reset、数据校验 + 更新通知
 - **`src/shared/constants.ts` / `src/shared/utils.ts`** — 已补充 storage key 和 `generateId()`
 - storage 测试已新增，覆盖 CRUD、默认设置、校验、通知容错
+- **`src/content/contentApp.ts` / `src/content/index.ts`** — content 最小闭环已实现：读取 settings/rules，解析 AO3 页面，匹配并渲染
+- **`src/background/backgroundApp.ts` / `src/background/index.ts`** — background 消息中转已实现：`RULES_UPDATED` / `SETTINGS_UPDATED` 广播到 AO3 tabs
+- Amp 2026-05-04 review 中 F6 已处理：content script 入口不再是 stub
 
 ## 当前状态
 
-第 1 阶段核心逻辑模块（B1–B4、C2–C7）、渲染模块（D1–D5）和存储模块（E1–E3）已全部实现并通过测试。工程基线：
+第 1 阶段核心逻辑模块（B1–B4、C2–C7）、渲染模块（D1–D5）、存储模块（E1–E3）、content 最小闭环和 background 消息中转已全部实现并通过测试。工程基线：
 
 - `npm run build` 通过
 - `npm run lint` 通过
-- `npm run test` 全部 PASS（45/45）
+- `npm run test` 全部 PASS（59/59）
 
 ## 下一步
 
-1. 接 `src/content/index.ts` 最小闭环：读取规则 / 设置，解析当前 AO3 页面，匹配并调用 renderer
-2. 处理 Amp review F6：content script 入口从 stub 变为 parser → ruleEngine → renderer 胶水逻辑
-3. 实现 background 消息中转，为 popup/options/hover 的规则变更通知做准备
-4. 实现 hover 交互（F1–F4）与 popup / options UI（G、H 组）
+1. 实现 hover 交互（F1–F4）：tag hover 小按钮、菜单、quick-add 写入规则、即时重渲染
+2. 实现 Toast 反馈（I1）
+3. 实现 popup / options UI（G、H 组）
+4. 后续补 MutationObserver / 防抖 / 错误兜底（I3–I6）
 
 ## 先读什么
 
@@ -64,3 +67,5 @@
 - `src/core/types.ts` — 核心类型定义
 - `src/content/renderer.ts` — 当前页面渲染入口
 - `src/storage/ruleStorage.ts` / `src/storage/settingsStorage.ts` — 本地存储 API
+- `src/content/contentApp.ts` — content 最小闭环控制器
+- `src/background/backgroundApp.ts` — background 消息中转控制器

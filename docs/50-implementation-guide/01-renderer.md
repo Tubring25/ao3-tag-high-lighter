@@ -40,7 +40,7 @@ export function renderMatches(
   result: MatchResult
 ): void;
 
-export function clearAllRendering(
+export function clearRenderedMatches(
   works: readonly ParsedWork[]
 ): void;
 ```
@@ -109,12 +109,12 @@ for (const [tagId, actions] of tagActions) {
 
 注意 `hideWork` 的 class 名映射为 `ao3th-hide-work`（kebab-case）。
 
-#### 5. clearAllRendering
+#### 5. clearRenderedMatches
 
 全量清理函数，遍历所有 tag 移除 class：
 
 ```typescript
-export function clearAllRendering(works: readonly ParsedWork[]): void {
+export function clearRenderedMatches(works: readonly ParsedWork[]): void {
   for (const work of works) {
     for (const tag of work.tags) {
       clearTagClasses(tag.element);
@@ -128,7 +128,7 @@ export function clearAllRendering(works: readonly ParsedWork[]): void {
 
 ```
 renderMatches(works, result):
-  1. clearAllRendering(works)         // 先清理
+  1. clearRenderedMatches(works)      // 先清理
   2. 构建 tagMap
   3. 聚合 tagActions
   4. 遍历 tagActions → resolveHighestPriorityAction → 加 class
@@ -272,7 +272,7 @@ renderer 的逻辑主要是 DOM 操作，测试方式：
    - work 命中 warn → work element 有 `ao3th-work-warn`
    - work 命中 hideWork → work element `display: none` + 存在占位条
    - 重算后旧 class 被清理
-   - clearAllRendering 清空所有标记
+   - clearRenderedMatches 清空所有标记
 
 ## 注意事项
 
