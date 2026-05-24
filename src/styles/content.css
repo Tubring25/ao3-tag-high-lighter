@@ -36,3 +36,26 @@
   font: inherit;
   text-align: left;
 }
+
+.ao3th-toast-container {
+  position: fixed !important;
+  right: 18px !important;
+  bottom: 18px !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  pointer-events: none !important;
+}
+
+.ao3th-toast {
+  max-width: min(320px, calc(100vw - 36px)) !important;
+  padding: 9px 12px !important;
+  border: 1px solid rgba(55, 65, 81, 0.24) !important;
+  border-radius: 8px !important;
+  background: #1f2937 !important;
+  color: #fff !important;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.22) !important;
+  font: 13px/1.35 sans-serif !important;
+  pointer-events: none !important;
+}

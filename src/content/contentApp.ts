@@ -5,6 +5,11 @@ import { getSettings as defaultGetSettings } from "../storage/settingsStorage";
 import type { RuntimeMessage } from "../shared/message";
 import { parseAo3Works as defaultParseAo3Works } from "./ao3Parser";
 import {
+  mountHoverMenu as defaultMountHoverMenu,
+  unmountHoverMenu as defaultUnmountHoverMenu,
+  type HoverMenuOptions,
+} from "./hoverMenu";
+import {
   clearRenderedMatches as defaultClearRenderedMatches,
   renderMatches as defaultRenderMatches,
   type RenderOptions,
@@ -22,6 +27,12 @@ export interface ContentAppDeps {
     options: RenderOptions
   ): void;
   clearRenderedMatches(works: readonly ParsedWork[]): void;
+  mountHoverMenu(
+    works: readonly ParsedWork[],
+    settings: Settings,
+    options: Pick<HoverMenuOptions, "onRuleCreated">
+  ): void;
+  unmountHoverMenu(): void;
   addMessageListener(callback: (message: unknown) => void): void;
   logError(error: unknown): void;
 }
@@ -56,6 +67,7 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
   cachedRules = await deps.listRules();
   cachedWorks = deps.parseAo3Works(deps.root);
   runMatchAndRender();
+  syncHoverMenu();
 
   async function handleRulesUpdated(): Promise<void> {
     cachedRules = await deps.listRules();
@@ -63,6 +75,7 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
 
     ensureWorksParsed();
     runMatchAndRender();
+    syncHoverMenu();
   }
 
   async function handleSettingsUpdated(): Promise<void> {
@@ -70,12 +83,14 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
 
     if (!cachedSettings.extensionEnabled) {
       deps.clearRenderedMatches(cachedWorks);
+      deps.unmountHoverMenu();
       return;
     }
 
     cachedRules = await deps.listRules();
     ensureWorksParsed();
     runMatchAndRender();
+    syncHoverMenu();
   }
 
   function ensureWorksParsed(): void {
@@ -99,6 +114,22 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     const result = deps.matchRules(cachedWorks, cachedRules);
     deps.renderMatches(cachedWorks, result, { hideWorkMode: cachedSettings.hideWorkMode });
   }
+
+  function syncHoverMenu(): void {
+    if (!cachedSettings?.extensionEnabled || !cachedSettings.hoverButtonEnabled || cachedWorks.length === 0) {
+      deps.unmountHoverMenu();
+      return;
+    }
+
+    deps.mountHoverMenu(cachedWorks, cachedSettings, {
+      onRuleCreated: handleQuickAddRuleCreated,
+    });
+  }
+
+  async function handleQuickAddRuleCreated(): Promise<void> {
+    cachedRules = await deps.listRules();
+    runMatchAndRender();
+  }
 }
 
 function createRealDeps(): ContentAppDeps {
@@ -110,6 +141,8 @@ function createRealDeps(): ContentAppDeps {
     matchRules: defaultMatchRules,
     renderMatches: defaultRenderMatches,
     clearRenderedMatches: defaultClearRenderedMatches,
+    mountHoverMenu: defaultMountHoverMenu,
+    unmountHoverMenu: defaultUnmountHoverMenu,
     addMessageListener: (callback) => {
       const onMessage = getChrome().runtime?.onMessage;
       if (!onMessage) {

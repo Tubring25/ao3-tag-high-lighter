@@ -1,6 +1,6 @@
 # Handoff — 当前状态
 
-**最后更新：** 2026-05-21
+**最后更新：** 2026-05-24
 
 ## 已完成
 
@@ -43,21 +43,23 @@
 - **`src/content/contentApp.ts` / `src/content/index.ts`** — content 最小闭环已实现：读取 settings/rules，解析 AO3 页面，匹配并渲染
 - **`src/background/backgroundApp.ts` / `src/background/index.ts`** — background 消息中转已实现：`RULES_UPDATED` / `SETTINGS_UPDATED` 广播到 AO3 tabs
 - Amp 2026-05-04 review 中 F6 已处理：content script 入口不再是 stub
+- **`src/content/hoverMenu.ts`** — hover quick-add 已实现：tag hover 显示按钮，点击选择 action 后写入 quickAdd 规则
+- **`src/content/toast.ts`** — Toast 反馈已实现，quick-add 成功后按 settings 显示提示
+- **`src/content/contentApp.ts`** — 已接入 hover menu；quick-add 成功后刷新 rules 并即时重渲染当前页
 
 ## 当前状态
 
-第 1 阶段核心逻辑模块（B1–B4、C2–C7）、渲染模块（D1–D5）、存储模块（E1–E3）、content 最小闭环和 background 消息中转已全部实现并通过测试。工程基线：
+第 1 阶段核心逻辑模块（B1–B4、C2–C7）、渲染模块（D1–D5）、存储模块（E1–E3）、content 最小闭环、background 消息中转，以及第 2 阶段 hover quick-add（F1–F4）和 Toast（I1）已全部实现并通过测试。工程基线：
 
 - `npm run build` 通过
 - `npm run lint` 通过
-- `npm run test` 全部 PASS（59/59）
+- `npm run test` 全部 PASS（71/71）
 
 ## 下一步
 
-1. 实现 hover 交互（F1–F4）：tag hover 小按钮、菜单、quick-add 写入规则、即时重渲染
-2. 实现 Toast 反馈（I1）
-3. 实现 popup / options UI（G、H 组）
-4. 后续补 MutationObserver / 防抖 / 错误兜底（I3–I6）
+1. 实现 popup（G1–G3）：当前页命中统计、全局开关、跳转 options
+2. 实现 options UI（H1–H6）：规则列表、搜索、新增、编辑、删除、启停
+3. 后续补 MutationObserver / 防抖 / 错误兜底（I3–I6）
 
 ## 先读什么
 
@@ -69,3 +71,5 @@
 - `src/storage/ruleStorage.ts` / `src/storage/settingsStorage.ts` — 本地存储 API
 - `src/content/contentApp.ts` — content 最小闭环控制器
 - `src/background/backgroundApp.ts` — background 消息中转控制器
+- `src/content/hoverMenu.ts` — hover quick-add 交互
+- `src/content/toast.ts` — Toast 反馈

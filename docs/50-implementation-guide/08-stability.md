@@ -10,70 +10,32 @@
 
 ### 实现位置
 
-可以在 `src/content/hoverMenu.ts` 中就近实现，也可以单独抽一个 `src/content/toast.ts`。推荐抽出独立文件，popup 和 content 都可能用到。
+当前实现位于 `src/content/toast.ts`，样式定义在 `src/styles/content.css`。
 
 ### 实现方案
 
 ```typescript
 // src/content/toast.ts
 
-let toastContainer: HTMLElement | null = null;
-
-function ensureContainer(): HTMLElement {
-  if (toastContainer) return toastContainer;
-
-  toastContainer = document.createElement("div");
-  toastContainer.id = "ao3th-toast-container";
-  toastContainer.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 999999;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    pointer-events: none;
-  `;
-  document.body.appendChild(toastContainer);
-  return toastContainer;
+export interface ToastOptions {
+  durationMs?: number;
 }
 
 export function showToast(
   message: string,
-  duration = 2500
+  options: ToastOptions = {}
 ): void {
-  const container = ensureContainer();
-
   const toast = document.createElement("div");
   toast.className = "ao3th-toast";
+  toast.dataset.ao3thToast = "true";
   toast.textContent = message;
-  toast.style.cssText = `
-    padding: 10px 16px;
-    background: #333;
-    color: #fff;
-    border-radius: 6px;
-    font-size: 13px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    opacity: 0;
-    transform: translateY(10px);
-    transition: opacity 0.3s, transform 0.3s;
-    pointer-events: auto;
-  `;
 
-  container.appendChild(toast);
-
-  // 触发动画
-  requestAnimationFrame(() => {
-    toast.style.opacity = "1";
-    toast.style.transform = "translateY(0)";
-  });
+  ensureToastContainer().appendChild(toast);
 
   // 自动消失
   setTimeout(() => {
-    toast.style.opacity = "0";
-    toast.style.transform = "translateY(10px)";
-    toast.addEventListener("transitionend", () => toast.remove(), { once: true });
-  }, duration);
+    toast.remove();
+  }, options.durationMs ?? 2500);
 }
 ```
 

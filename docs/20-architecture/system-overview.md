@@ -69,6 +69,7 @@ src/
     ao3Parser.ts           # AO3 页面 tag / work 解析
     renderer.ts            # 命中结果 → DOM 样式渲染
     hoverMenu.ts           # 悬停按钮 + 快速添加菜单
+    toast.ts               # 页面内 Toast 反馈
     workEffects.ts         # 作品级效果（warn 边框、hideWork 折叠）
 
   core/

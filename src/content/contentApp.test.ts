@@ -49,6 +49,73 @@ describe("startContentApp", () => {
     expect(renderMatches).toHaveBeenCalledWith([work], matchResult, { hideWorkMode: "hide" });
   });
 
+  it("mounts the hover menu when hover is enabled", async () => {
+    const work = createWork();
+    const { deps, mountHoverMenu } = createDeps({
+      parseAo3Works: vi.fn(() => [work]),
+    });
+
+    await startContentApp(deps);
+
+    expect(mountHoverMenu).toHaveBeenCalledWith(
+      [work],
+      createSettings(),
+      expect.objectContaining({ onRuleCreated: expect.any(Function) })
+    );
+  });
+
+  it("does not mount the hover menu when hover is disabled", async () => {
+    const { deps, mountHoverMenu, unmountHoverMenu } = createDeps({
+      getSettings: vi.fn(async () => createSettings({ hoverButtonEnabled: false })),
+    });
+
+    await startContentApp(deps);
+
+    expect(mountHoverMenu).not.toHaveBeenCalled();
+    expect(unmountHoverMenu).toHaveBeenCalledTimes(1);
+  });
+
+  it("unmounts hover menu when SETTINGS_UPDATED disables hover", async () => {
+    const listenerRef = createListenerRef();
+    const { deps, getSettings, unmountHoverMenu } = createDeps({
+      addMessageListener: listenerRef.addMessageListener,
+    });
+    getSettings
+      .mockResolvedValueOnce(createSettings({ hoverButtonEnabled: true }))
+      .mockResolvedValueOnce(createSettings({ hoverButtonEnabled: false }));
+
+    await startContentApp(deps);
+    listenerRef.listener?.({ type: "SETTINGS_UPDATED" });
+    await flushAsyncHandlers();
+
+    expect(unmountHoverMenu).toHaveBeenCalled();
+  });
+
+  it("refreshes rules and rerenders after a quick-add rule is created", async () => {
+    const work = createWork();
+    const firstRule = createRule({ id: "rule-1" });
+    const addedRule = createRule({ id: "rule-2", pattern: "Angst" });
+    const addedResult = createMatchResult({
+      tagMatches: [{ tagId: "tag-1", ruleId: "rule-2", action: "highlight" }],
+    });
+    const { deps, listRules, mountHoverMenu, renderMatches, matchRules } = createDeps({
+      listRules: vi.fn(async () => [firstRule]),
+      parseAo3Works: vi.fn(() => [work]),
+      matchRules: vi.fn(() => createMatchResult()),
+    });
+    listRules.mockResolvedValueOnce([firstRule]).mockResolvedValueOnce([firstRule, addedRule]);
+    matchRules.mockReturnValueOnce(createMatchResult()).mockReturnValueOnce(addedResult);
+
+    await startContentApp(deps);
+    const options = mountHoverMenu.mock.calls[0][2];
+    await options.onRuleCreated();
+
+    expect(listRules).toHaveBeenCalledTimes(2);
+    expect(renderMatches).toHaveBeenLastCalledWith([work], addedResult, {
+      hideWorkMode: "collapse",
+    });
+  });
+
   it("refreshes rules and renders again when RULES_UPDATED arrives", async () => {
     const work = createWork();
     const firstRule = createRule({ id: "rule-1", pattern: "Slow Burn" });
@@ -155,6 +222,8 @@ function createDeps(overrides: Partial<ContentAppDeps> = {}) {
   const clearRenderedMatches = vi.fn();
   const addMessageListener = vi.fn();
   const logError = vi.fn();
+  const mountHoverMenu = vi.fn();
+  const unmountHoverMenu = vi.fn();
 
   const deps: ContentAppDeps = {
     root: document,
@@ -166,6 +235,8 @@ function createDeps(overrides: Partial<ContentAppDeps> = {}) {
     clearRenderedMatches,
     addMessageListener,
     logError,
+    mountHoverMenu,
+    unmountHoverMenu,
     ...overrides,
   };
 
@@ -179,6 +250,8 @@ function createDeps(overrides: Partial<ContentAppDeps> = {}) {
     clearRenderedMatches: deps.clearRenderedMatches as typeof clearRenderedMatches,
     addMessageListener: deps.addMessageListener as typeof addMessageListener,
     logError: deps.logError as typeof logError,
+    mountHoverMenu: deps.mountHoverMenu as typeof mountHoverMenu,
+    unmountHoverMenu: deps.unmountHoverMenu as typeof unmountHoverMenu,
   };
 }
 

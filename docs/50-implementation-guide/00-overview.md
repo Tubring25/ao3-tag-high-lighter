@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-以下模块已完成并通过测试（59/59 tests pass）：
+以下模块已完成并通过测试（71/71 tests pass）：
 
 | 模块 | 文件 | 状态 |
 |---|---|---|
@@ -16,13 +16,14 @@
 | 本地存储 | `src/storage/ruleStorage.ts` / `src/storage/settingsStorage.ts` | ✅ 完成 |
 | Content 最小闭环 | `src/content/contentApp.ts` / `src/content/index.ts` | ✅ 完成 |
 | Background 消息中转 | `src/background/backgroundApp.ts` / `src/background/index.ts` | ✅ 完成 |
+| Hover quick-add | `src/content/hoverMenu.ts` | ✅ 完成 |
+| Toast 反馈 | `src/content/toast.ts` | ✅ 完成 |
 | content 样式 | `src/styles/content.css` | ✅ 完成 |
 
 以下文件存在骨架（stub），需要实现：
 
 | 文件 | 当前状态 |
 |---|---|
-| `src/content/hoverMenu.ts` | stub |
 | `src/content/pageObserver.ts` | stub |
 | `src/popup/index.ts` | scaffold HTML |
 | `src/options/index.ts` | scaffold HTML |
@@ -39,8 +40,8 @@
   └── 步骤 6：manifest / build 配置修正 → 10-manifest-build.md
 
 阶段 2：页面交互
-  ├── 步骤 7：hover 按钮 + 快速添加菜单（F1–F4） → 04-hover-menu.md
-  └── 步骤 8：Toast 反馈（I1） → 08-stability.md
+  ├── 步骤 7：hover 按钮 + 快速添加菜单（F1–F4） → 已完成
+  └── 步骤 8：Toast 反馈（I1） → 已完成
 
 阶段 3：管理界面
   ├── 步骤 9：popup（G1–G3） → 05-popup.md
@@ -69,6 +70,6 @@
 ## 阶段验收标志
 
 - **阶段 1 完成标志：** 在 `chrome://extensions` 加载后，打开 AO3 列表页，写死几条规则就能看到 highlight / mute / warn / hideWork 效果。
-- **阶段 2 完成标志：** 悬停 tag 出现按钮，点击可创建规则，页面即时更新。
+- **阶段 2 完成标志：** 悬停 tag 出现按钮，点击可创建规则，页面即时更新。当前已完成。
 - **阶段 3 完成标志：** popup 显示命中统计 + 全局开关；options 可完整管理规则。
 - **阶段 4 完成标志：** 动态加载、页面切换、大量规则场景下不卡顿不报错。
