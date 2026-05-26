@@ -6,85 +6,31 @@
 
 | 文件 | 职责 |
 |---|---|
-| `popup.html` | popup HTML 入口，build 后输出为 `dist/popup.html` |
-| `src/popup/index.ts` | popup 逻辑 |
+| `src/popup/popupApp.ts` | popup 可测试控制器 |
+| `src/popup/index.ts` | popup 入口，只负责启动 app |
 | `src/popup/popup.css` | popup 样式 |
-| `src/storage/settingsStorage.ts` | 读写全局开关 |
+| `src/content/hitStats.ts` | content 侧命中统计计算 |
+| `src/shared/message.ts` | `GET_HIT_STATS` / `HitStats` 协议 |
 
-## 功能描述
+## 当前行为
 
-popup 是用户点击浏览器工具栏扩展图标时弹出的小窗口，功能极简：
+popup 每次打开时重新读取状态：
 
-1. 显示当前标签页的命中统计（各 action 数量）
-2. 全局启停开关
-3. 跳转到 options 页面
+1. 读取 settings，渲染全局启停开关
+2. 查询当前 active tab
+3. 向当前 tab 发送 `{ type: "GET_HIT_STATS" }`
+4. 成功时显示 highlight / warn / mute / hideWork / totalRules
+5. 失败或非 AO3 页时显示 fallback
+6. 点击 "Manage rules" 打开 options 页面
 
-## UI 布局
-
-```
-┌─────────────────────────────┐
-│  AO3 Tag Highlighter        │
-│                             │
-│  ┌──────────────────────┐   │
-│  │  全局开关     [ON]   │   │
-│  └──────────────────────┘   │
-│                             │
-│  当前页命中                  │
-│  ┌──────────────────────┐   │
-│  │ 🌟 高亮    12 tags   │   │
-│  │ ⚠️ 警告     3 works  │   │
-│  │ 👻 弱化     8 tags   │   │
-│  │ 🙈 折叠     2 works  │   │
-│  └──────────────────────┘   │
-│                             │
-│  [ ⚙ 管理规则 ]            │
-│                             │
-└─────────────────────────────┘
-```
-
-## 实现方案
-
-### popup.html
-
-```html
-<!doctype html>
-<html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AO3 Tag Highlighter</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="./src/popup/index.ts"></script>
-  </body>
-</html>
-```
-
-### index.ts 逻辑
-
-#### 1. 获取当前标签页的命中数据
-
-popup 本身无法直接访问 content script 的内存数据。需要通过 message 通信获取：
+## Message Protocol
 
 ```typescript
-// popup 向 content script 发消息请求命中数据
-async function getHitStats(): Promise<HitStats | null> {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) return null;
+export type RuntimeMessage =
+  | { type: "RULES_UPDATED" }
+  | { type: "SETTINGS_UPDATED" }
+  | { type: "GET_HIT_STATS" };
 
-    const response = await chrome.tabs.sendMessage(tab.id, { type: "GET_HIT_STATS" });
-    return response as HitStats;
-  } catch {
-    return null; // 非 AO3 页面或 content script 未加载
-  }
-}
-```
-
-**HitStats 类型**（在 `src/shared/message.ts` 中添加）：
-
-```typescript
 export interface HitStats {
   highlight: number;
   warn: number;
@@ -94,236 +40,51 @@ export interface HitStats {
 }
 ```
 
-**content script 侧响应**（在 `content/index.ts` 中添加 listener）：
+`GET_HIT_STATS` 只由 popup 直接发送给当前 tab 的 content script，不经过 background 广播。
+
+## contentApp 响应
+
+`contentApp` 缓存最近一次 `MatchResult`，收到 `GET_HIT_STATS` 时同步 `sendResponse()`：
 
 ```typescript
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+deps.addMessageListener((message, sendResponse) => {
   if (message.type === "GET_HIT_STATS") {
-    sendResponse(computeHitStats());
-    return true; // 保持消息通道开放（异步响应时需要）
-  }
-});
-
-function computeHitStats(): HitStats {
-  const result = matchRules(cachedWorks, cachedRules);
-  const stats: HitStats = {
-    highlight: 0, warn: 0, mute: 0, hideWork: 0,
-    totalRules: cachedRules.length,
-  };
-
-  for (const match of result.tagMatches) {
-    if (match.action === "highlight") stats.highlight++;
-    else if (match.action === "mute") stats.mute++;
-  }
-
-  for (const summary of result.workSummaries) {
-    if (summary.hasWarn) stats.warn++;
-    if (summary.hasHideWork) stats.hideWork++;
-  }
-
-  return stats;
-}
-```
-
-需要在 `src/shared/message.ts` 中扩展 RuntimeMessage 类型：
-
-```typescript
-export type RuntimeMessage =
-  | { type: "RULES_UPDATED" }
-  | { type: "SETTINGS_UPDATED" }
-  | { type: "GET_HIT_STATS" };
-```
-
-#### 2. 全局开关
-
-```typescript
-import { getSettings, saveSettings } from "../storage/settingsStorage";
-
-async function renderToggle(container: HTMLElement): Promise<void> {
-  const settings = await getSettings();
-
-  const wrapper = document.createElement("div");
-  wrapper.className = "popup-toggle";
-
-  const label = document.createElement("span");
-  label.textContent = "全局开关";
-
-  const toggle = document.createElement("input");
-  toggle.type = "checkbox";
-  toggle.checked = settings.extensionEnabled;
-  toggle.addEventListener("change", async () => {
-    await saveSettings({ extensionEnabled: toggle.checked });
-    // 通知 content script 设置已更新
-    // sendMessage 会通过 background 中转给 content script
-  });
-
-  wrapper.appendChild(label);
-  wrapper.appendChild(toggle);
-  container.appendChild(wrapper);
-}
-```
-
-**全局开关的通知机制：**
-
-`saveSettings` 内部已经会发送 `SETTINGS_UPDATED` 消息。但 popup 发的 `runtime.sendMessage` 只会被 background 收到，不会被 content script 收到。需要 background 中转（见 `07-background.md`），或者 popup 直接用 `chrome.tabs.sendMessage` 发给当前 tab：
-
-```typescript
-async function notifyContentScript(): Promise<void> {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab?.id) {
-      await chrome.tabs.sendMessage(tab.id, { type: "SETTINGS_UPDATED" });
-    }
-  } catch {
-    // 忽略
-  }
-}
-```
-
-#### 3. 跳转到 options
-
-```typescript
-function renderOptionsLink(container: HTMLElement): void {
-  const link = document.createElement("button");
-  link.className = "popup-options-link";
-  link.textContent = "⚙ 管理规则";
-  link.addEventListener("click", () => {
-    chrome.runtime.openOptionsPage();
-  });
-  container.appendChild(link);
-}
-```
-
-#### 4. 渲染命中统计
-
-```typescript
-async function renderStats(container: HTMLElement): Promise<void> {
-  const stats = await getHitStats();
-
-  const section = document.createElement("div");
-  section.className = "popup-stats";
-
-  if (!stats) {
-    section.textContent = "当前页面不是 AO3，或插件未加载。";
-    container.appendChild(section);
+    sendResponse?.(calculateHitStats(latestMatchResult, cachedRules.length));
     return;
   }
-
-  const items = [
-    { emoji: "🌟", label: "高亮", count: stats.highlight, unit: "tags" },
-    { emoji: "⚠️", label: "警告", count: stats.warn, unit: "works" },
-    { emoji: "👻", label: "弱化", count: stats.mute, unit: "tags" },
-    { emoji: "🙈", label: "折叠", count: stats.hideWork, unit: "works" },
-  ];
-
-  for (const item of items) {
-    const row = document.createElement("div");
-    row.className = "popup-stat-row";
-    row.textContent = `${item.emoji} ${item.label}  ${item.count} ${item.unit}`;
-    section.appendChild(row);
-  }
-
-  container.appendChild(section);
-}
+});
 ```
 
-#### 5. 组装入口
+统计逻辑与 renderer 一致：同一 tag 多规则命中时先按优先级收敛，再统计 tag 级 highlight / mute；warn / hideWork 按 work summary 统计。
+
+## Popup Controller
 
 ```typescript
-import "./popup.css";
-
-async function main(): Promise<void> {
-  const app = document.querySelector<HTMLDivElement>("#app");
-  if (!app) return;
-
-  app.innerHTML = "";
-
-  const title = document.createElement("h1");
-  title.className = "popup-title";
-  title.textContent = "AO3 Tag Highlighter";
-  app.appendChild(title);
-
-  await renderToggle(app);
-  await renderStats(app);
-  renderOptionsLink(app);
+export interface PopupAppDeps {
+  getSettings(): Promise<Settings>;
+  saveSettings(patch: Partial<Settings>): Promise<Settings>;
+  getCurrentTabId(): Promise<number | null>;
+  sendMessageToTab(tabId: number, message: RuntimeMessage): Promise<unknown>;
+  openOptionsPage(): void;
+  logError(error: unknown): void;
 }
 
-main().catch(console.error);
+export async function renderPopupApp(
+  container: HTMLElement,
+  deps?: PopupAppDeps
+): Promise<void>;
 ```
 
-### popup.css 样式参考
+全局开关直接调用：
 
-```css
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 14px;
-  color: #333;
-}
-
-#app {
-  min-width: 280px;
-  padding: 16px;
-}
-
-.popup-title {
-  margin: 0 0 12px;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.popup-toggle {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: #f5f5f5;
-  border-radius: 6px;
-  margin-bottom: 12px;
-}
-
-.popup-stats {
-  margin-bottom: 12px;
-}
-
-.popup-stat-row {
-  padding: 6px 0;
-  font-size: 13px;
-  border-bottom: 1px solid #eee;
-}
-
-.popup-stat-row:last-child {
-  border-bottom: none;
-}
-
-.popup-options-link {
-  display: block;
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background: #fff;
-  cursor: pointer;
-  text-align: center;
-  font-size: 14px;
-  color: #555;
-}
-
-.popup-options-link:hover {
-  background: #f0f0f0;
-}
+```typescript
+await saveSettings({ extensionEnabled: checked });
 ```
 
-## 注意事项
+`saveSettings()` 已负责发送 `SETTINGS_UPDATED`，由 background 广播到 AO3 tabs。
 
-- popup 每次打开都会重新初始化，不存在"状态保持"的问题。
-- `chrome.runtime.openOptionsPage()` 会打开 manifest 中声明的 `options_page`。
-- popup 的宽度有限（Chrome 限制 max 800px，一般建议 280–400px）。
-- popup 中使用 `chrome.tabs.sendMessage` 时，需要确保目标 tab 有 content script 在监听。如果用户在非 AO3 页面打开 popup，通信会失败，需要 try/catch 兜底。
-- 开关的视觉可以用原生 checkbox，也可以用自定义的 toggle switch。MVP 阶段用原生 checkbox 即可，后续可以美化。
+## 当前不做
 
-## 可选增强
-
-- 用一个漂亮的 toggle switch 替代原生 checkbox（纯 CSS 实现）
-- 无命中时显示"暂无命中规则"文案
-- 显示当前规则总数（`共 ${stats.totalRules} 条规则`）
+- 不实现 options CRUD；按钮只打开 options 页面。
+- 不在 popup 内重新 parse AO3 页面，只读取 content script 已缓存的当前页 stats。
+- 不保持 popup 内部状态；popup 每次打开重新初始化。

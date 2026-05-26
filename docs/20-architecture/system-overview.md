@@ -85,6 +85,7 @@ src/
 
   popup/
     index.ts
+    popupApp.ts            # popup 可测试控制器
     popup.css
 
   options/
@@ -93,7 +94,7 @@ src/
 
   shared/
     constants.ts           # 常量
-    message.ts             # 消息类型定义（background ↔ content ↔ popup）
+    message.ts             # 消息类型定义（background ↔ content ↔ popup），含 HitStats
     utils.ts               # 通用工具函数
 
   styles/

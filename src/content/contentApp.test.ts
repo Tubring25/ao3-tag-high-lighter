@@ -1,4 +1,5 @@
 import type { MatchResult, ParsedTag, ParsedWork, Rule, Settings } from "../core/types";
+import { calculateHitStats } from "./hitStats";
 import { startContentApp, type ContentAppDeps } from "./contentApp";
 
 describe("startContentApp", () => {
@@ -116,6 +117,98 @@ describe("startContentApp", () => {
     });
   });
 
+  it("responds to GET_HIT_STATS with the latest match stats", async () => {
+    const work = createWork();
+    const rule = createRule();
+    const listenerRef = createListenerRef();
+    const sendResponse = vi.fn();
+    const { deps } = createDeps({
+      listRules: vi.fn(async () => [rule]),
+      parseAo3Works: vi.fn(() => [work]),
+      matchRules: vi.fn(() =>
+        createMatchResult({
+          tagMatches: [{ tagId: "tag-1", ruleId: "rule-1", action: "highlight" }],
+          workSummaries: [
+            {
+              workId: "work-1",
+              matchedRuleIds: ["rule-1"],
+              hasWarn: true,
+              hasHideWork: false,
+            },
+          ],
+        })
+      ),
+      addMessageListener: listenerRef.addMessageListener,
+    });
+
+    await startContentApp(deps);
+    listenerRef.listener?.({ type: "GET_HIT_STATS" }, sendResponse);
+
+    expect(sendResponse).toHaveBeenCalledWith({
+      highlight: 1,
+      warn: 1,
+      mute: 0,
+      hideWork: 0,
+      totalRules: 1,
+    });
+  });
+
+  it("responds to GET_HIT_STATS with zero hits when disabled", async () => {
+    const listenerRef = createListenerRef();
+    const sendResponse = vi.fn();
+    const { deps } = createDeps({
+      getSettings: vi.fn(async () => createSettings({ extensionEnabled: false })),
+      addMessageListener: listenerRef.addMessageListener,
+    });
+
+    await startContentApp(deps);
+    listenerRef.listener?.({ type: "GET_HIT_STATS" }, sendResponse);
+
+    expect(sendResponse).toHaveBeenCalledWith({
+      highlight: 0,
+      warn: 0,
+      mute: 0,
+      hideWork: 0,
+      totalRules: 0,
+    });
+  });
+
+  it("uses the updated match result for GET_HIT_STATS after RULES_UPDATED", async () => {
+    const work = createWork();
+    const firstRule = createRule({ id: "rule-1" });
+    const secondRule = createRule({ id: "rule-2" });
+    const listenerRef = createListenerRef();
+    const sendResponse = vi.fn();
+    const matchRules = vi.fn(() => createMatchResult());
+    matchRules
+      .mockReturnValueOnce(createMatchResult())
+      .mockReturnValueOnce(
+        createMatchResult({
+          tagMatches: [{ tagId: "tag-1", ruleId: "rule-2", action: "mute" }],
+        })
+      );
+    const { deps, listRules } = createDeps({
+      listRules: vi.fn(async () => [firstRule]),
+      parseAo3Works: vi.fn(() => [work]),
+      matchRules,
+      addMessageListener: listenerRef.addMessageListener,
+    });
+    listRules.mockResolvedValueOnce([firstRule]).mockResolvedValueOnce([firstRule, secondRule]);
+
+    await startContentApp(deps);
+    listenerRef.listener?.({ type: "RULES_UPDATED" });
+    await flushAsyncHandlers();
+    listenerRef.listener?.({ type: "GET_HIT_STATS" }, sendResponse);
+
+    expect(sendResponse).toHaveBeenCalledWith({
+      highlight: 0,
+      warn: 0,
+      mute: 1,
+      hideWork: 0,
+      totalRules: 2,
+    });
+  });
+
   it("refreshes rules and renders again when RULES_UPDATED arrives", async () => {
     const work = createWork();
     const firstRule = createRule({ id: "rule-1", pattern: "Slow Burn" });
@@ -224,6 +317,7 @@ function createDeps(overrides: Partial<ContentAppDeps> = {}) {
   const logError = vi.fn();
   const mountHoverMenu = vi.fn();
   const unmountHoverMenu = vi.fn();
+  const calculateStats = vi.fn(calculateHitStats);
 
   const deps: ContentAppDeps = {
     root: document,
@@ -237,6 +331,7 @@ function createDeps(overrides: Partial<ContentAppDeps> = {}) {
     logError,
     mountHoverMenu,
     unmountHoverMenu,
+    calculateHitStats: calculateStats,
     ...overrides,
   };
 
@@ -256,10 +351,13 @@ function createDeps(overrides: Partial<ContentAppDeps> = {}) {
 }
 
 function createListenerRef() {
-  let listener: ((message: unknown) => void) | null = null;
-  const addMessageListener = vi.fn((callback: (message: unknown) => void) => {
+  let listener: ((message: unknown, sendResponse?: (response: unknown) => void) => void) | null =
+    null;
+  const addMessageListener = vi.fn(
+    (callback: (message: unknown, sendResponse?: (response: unknown) => void) => void) => {
     listener = callback;
-  });
+    }
+  );
 
   return {
     get listener() {

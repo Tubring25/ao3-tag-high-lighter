@@ -1,6 +1,6 @@
 # Handoff — 当前状态
 
-**最后更新：** 2026-05-24
+**最后更新：** 2026-05-25
 
 ## 已完成
 
@@ -46,20 +46,21 @@
 - **`src/content/hoverMenu.ts`** — hover quick-add 已实现：tag hover 显示按钮，点击选择 action 后写入 quickAdd 规则
 - **`src/content/toast.ts`** — Toast 反馈已实现，quick-add 成功后按 settings 显示提示
 - **`src/content/contentApp.ts`** — 已接入 hover menu；quick-add 成功后刷新 rules 并即时重渲染当前页
+- **`src/content/hitStats.ts` / `src/shared/message.ts`** — `GET_HIT_STATS` 协议与当前页命中统计已实现
+- **`src/popup/popupApp.ts` / `src/popup/index.ts`** — popup 已实现：命中统计、全局开关、打开 options
 
 ## 当前状态
 
-第 1 阶段核心逻辑模块（B1–B4、C2–C7）、渲染模块（D1–D5）、存储模块（E1–E3）、content 最小闭环、background 消息中转，以及第 2 阶段 hover quick-add（F1–F4）和 Toast（I1）已全部实现并通过测试。工程基线：
+第 1 阶段核心逻辑模块（B1–B4、C2–C7）、渲染模块（D1–D5）、存储模块（E1–E3）、content 最小闭环、background 消息中转、第 2 阶段 hover quick-add（F1–F4）和 Toast（I1），以及第 3 阶段 popup（G1–G3）已全部实现并通过测试。工程基线：
 
 - `npm run build` 通过
 - `npm run lint` 通过
-- `npm run test` 全部 PASS（71/71）
+- `npm run test` 全部 PASS（84/84）
 
 ## 下一步
 
-1. 实现 popup（G1–G3）：当前页命中统计、全局开关、跳转 options
-2. 实现 options UI（H1–H6）：规则列表、搜索、新增、编辑、删除、启停
-3. 后续补 MutationObserver / 防抖 / 错误兜底（I3–I6）
+1. 实现 options UI（H1–H6）：规则列表、搜索、新增、编辑、删除、启停
+2. 后续补 MutationObserver / 防抖 / 错误兜底（I3–I6）
 
 ## 先读什么
 
@@ -73,3 +74,5 @@
 - `src/background/backgroundApp.ts` — background 消息中转控制器
 - `src/content/hoverMenu.ts` — hover quick-add 交互
 - `src/content/toast.ts` — Toast 反馈
+- `src/content/hitStats.ts` — 当前页命中统计
+- `src/popup/popupApp.ts` — popup 控制器

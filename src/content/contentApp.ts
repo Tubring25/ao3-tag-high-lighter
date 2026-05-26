@@ -2,8 +2,9 @@ import { matchRules as defaultMatchRules } from "../core/ruleEngine";
 import type { MatchResult, ParsedWork, Rule, Settings } from "../core/types";
 import { listRules as defaultListRules } from "../storage/ruleStorage";
 import { getSettings as defaultGetSettings } from "../storage/settingsStorage";
-import type { RuntimeMessage } from "../shared/message";
+import type { HitStats, RuntimeMessage } from "../shared/message";
 import { parseAo3Works as defaultParseAo3Works } from "./ao3Parser";
+import { calculateHitStats as defaultCalculateHitStats } from "./hitStats";
 import {
   mountHoverMenu as defaultMountHoverMenu,
   unmountHoverMenu as defaultUnmountHoverMenu,
@@ -33,14 +34,17 @@ export interface ContentAppDeps {
     options: Pick<HoverMenuOptions, "onRuleCreated">
   ): void;
   unmountHoverMenu(): void;
-  addMessageListener(callback: (message: unknown) => void): void;
+  calculateHitStats(matchResult: MatchResult | null, totalRules: number): HitStats;
+  addMessageListener(callback: (message: unknown, sendResponse?: (response: unknown) => void) => void): void;
   logError(error: unknown): void;
 }
 
 interface ChromeLike {
   runtime?: {
     onMessage?: {
-      addListener(callback: (message: unknown) => void): void;
+      addListener(
+        callback: (message: unknown, sender: unknown, sendResponse: (response: unknown) => void) => void
+      ): void;
     };
   };
 }
@@ -49,9 +53,15 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
   let cachedWorks: ParsedWork[] = [];
   let cachedRules: Rule[] = [];
   let cachedSettings: Settings | null = null;
+  let latestMatchResult: MatchResult | null = null;
 
-  deps.addMessageListener((message) => {
+  deps.addMessageListener((message, sendResponse) => {
     if (!isRuntimeMessage(message)) return;
+
+    if (message.type === "GET_HIT_STATS") {
+      sendResponse?.(getHitStats());
+      return;
+    }
 
     if (message.type === "RULES_UPDATED") {
       void handleRulesUpdated().catch(deps.logError);
@@ -101,17 +111,23 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
   function runMatchAndRender(): void {
     if (!cachedSettings?.extensionEnabled) {
       deps.clearRenderedMatches(cachedWorks);
+      latestMatchResult = null;
       return;
     }
 
-    if (cachedWorks.length === 0) return;
+    if (cachedWorks.length === 0) {
+      latestMatchResult = null;
+      return;
+    }
 
     if (cachedRules.length === 0) {
       deps.clearRenderedMatches(cachedWorks);
+      latestMatchResult = null;
       return;
     }
 
     const result = deps.matchRules(cachedWorks, cachedRules);
+    latestMatchResult = result;
     deps.renderMatches(cachedWorks, result, { hideWorkMode: cachedSettings.hideWorkMode });
   }
 
@@ -130,6 +146,10 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     cachedRules = await deps.listRules();
     runMatchAndRender();
   }
+
+  function getHitStats(): HitStats {
+    return deps.calculateHitStats(latestMatchResult, cachedRules.length);
+  }
 }
 
 function createRealDeps(): ContentAppDeps {
@@ -143,12 +163,15 @@ function createRealDeps(): ContentAppDeps {
     clearRenderedMatches: defaultClearRenderedMatches,
     mountHoverMenu: defaultMountHoverMenu,
     unmountHoverMenu: defaultUnmountHoverMenu,
+    calculateHitStats: defaultCalculateHitStats,
     addMessageListener: (callback) => {
       const onMessage = getChrome().runtime?.onMessage;
       if (!onMessage) {
         throw new Error("Chrome runtime message API is unavailable");
       }
-      onMessage.addListener(callback);
+      onMessage.addListener((message, _sender, sendResponse) => {
+        callback(message, sendResponse);
+      });
     },
     logError: (error) => {
       console.error("[AO3 Tag Highlighter] Content app error:", error);
@@ -159,7 +182,9 @@ function createRealDeps(): ContentAppDeps {
 function isRuntimeMessage(message: unknown): message is RuntimeMessage {
   return (
     isObjectRecord(message) &&
-    (message.type === "RULES_UPDATED" || message.type === "SETTINGS_UPDATED")
+    (message.type === "RULES_UPDATED" ||
+      message.type === "SETTINGS_UPDATED" ||
+      message.type === "GET_HIT_STATS")
   );
 }
 

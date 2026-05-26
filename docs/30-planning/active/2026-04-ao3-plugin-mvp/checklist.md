@@ -34,9 +34,9 @@
 
 ## 第 3 阶段：管理界面
 
-- [ ] G1 — popup 命中统计
-- [ ] G2 — popup 全局开关
-- [ ] G3 — popup → options 跳转
+- [x] G1 — popup 命中统计
+- [x] G2 — popup 全局开关
+- [x] G3 — popup → options 跳转
 - [ ] H1 — options 规则列表
 - [ ] H2 — options 搜索筛选
 - [ ] H3 — options 新增规则

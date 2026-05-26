@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-以下模块已完成并通过测试（71/71 tests pass）：
+以下模块已完成并通过测试（84/84 tests pass）：
 
 | 模块 | 文件 | 状态 |
 |---|---|---|
@@ -18,6 +18,7 @@
 | Background 消息中转 | `src/background/backgroundApp.ts` / `src/background/index.ts` | ✅ 完成 |
 | Hover quick-add | `src/content/hoverMenu.ts` | ✅ 完成 |
 | Toast 反馈 | `src/content/toast.ts` | ✅ 完成 |
+| Popup | `src/popup/popupApp.ts` / `src/popup/index.ts` | ✅ 完成 |
 | content 样式 | `src/styles/content.css` | ✅ 完成 |
 
 以下文件存在骨架（stub），需要实现：
@@ -25,7 +26,6 @@
 | 文件 | 当前状态 |
 |---|---|
 | `src/content/pageObserver.ts` | stub |
-| `src/popup/index.ts` | scaffold HTML |
 | `src/options/index.ts` | scaffold HTML |
 
 ## 推荐实现顺序
@@ -44,7 +44,7 @@
   └── 步骤 8：Toast 反馈（I1） → 已完成
 
 阶段 3：管理界面
-  ├── 步骤 9：popup（G1–G3） → 05-popup.md
+  ├── 步骤 9：popup（G1–G3） → 已完成
   └── 步骤 10：options 页（H1–H6） → 06-options.md
 
 阶段 4：稳定性
