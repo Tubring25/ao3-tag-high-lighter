@@ -119,6 +119,8 @@ export async function addRule(
   input: Omit<Rule, "id" | "createdAt" | "updatedAt">
 ): Promise<Rule> {
   validateRuleInput(input);
+  const rules = await listRules();
+  assertNoDuplicateRule(input, rules);
 
   const now = Date.now();
   const rule: Rule = {
@@ -128,7 +130,6 @@ export async function addRule(
     updatedAt: now,
   };
 
-  const rules = await listRules();
   await chrome.storage.local.set({ [STORAGE_KEY_RULES]: [...rules, rule] });
   await notifyUpdate("RULES_UPDATED");
   return rule;
@@ -155,6 +156,7 @@ export async function updateRule(
   };
 
   validateRuleInput(updated);
+  assertNoDuplicateRule(updated, rules, id);
 
   rules[index] = updated;
   await chrome.storage.local.set({ [STORAGE_KEY_RULES]: rules });
@@ -162,6 +164,14 @@ export async function updateRule(
   return updated;
 }
 ```
+
+`addRule()` 和 `updateRule()` 会拒绝完全重复的规则。重复判定使用：
+
+```text
+normalizeTagText(pattern) + action + matchMode + category
+```
+
+这会阻止完全相同规则被重复添加，但仍允许同一 tag/pattern 配置不同 action；不同 action 的最终显示仍由 renderer 优先级解析。
 
 #### deleteRule
 

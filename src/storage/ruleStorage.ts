@@ -1,4 +1,5 @@
 import type { Rule } from "../core/types";
+import { normalizeTagText } from "../core/normalize";
 import { STORAGE_KEY_RULES } from "../shared/constants";
 import type { RuntimeMessage } from "../shared/message";
 import { generateId } from "../shared/utils";
@@ -41,6 +42,9 @@ export async function getRule(id: string): Promise<Rule | null> {
 export async function addRule(input: RuleCreateInput): Promise<Rule> {
   validateRuleInput(input);
 
+  const rules = await listRules();
+  assertNoDuplicateRule(input, rules);
+
   const now = Date.now();
   const rule: Rule = {
     ...input,
@@ -49,7 +53,6 @@ export async function addRule(input: RuleCreateInput): Promise<Rule> {
     updatedAt: now,
   };
 
-  const rules = await listRules();
   await saveRules([...rules, rule]);
   await notifyUpdate({ type: "RULES_UPDATED" });
   return rule;
@@ -71,6 +74,7 @@ export async function updateRule(id: string, patch: RuleUpdateInput): Promise<Ru
   };
 
   validateRuleInput(updated);
+  assertNoDuplicateRule(updated, rules, id);
 
   const nextRules = [...rules];
   nextRules[index] = updated;
@@ -126,6 +130,32 @@ export function validateRuleInput(input: Partial<Rule>): void {
   if (typeof input.enabled !== "boolean") {
     throw new Error("Invalid enabled: expected boolean");
   }
+}
+
+function assertNoDuplicateRule(
+  candidate: Pick<Rule, "pattern" | "action" | "matchMode" | "category">,
+  rules: readonly Rule[],
+  ignoredRuleId?: string
+): void {
+  const duplicate = rules.find((rule) => {
+    if (rule.id === ignoredRuleId) return false;
+    return getRuleUniquenessKey(rule) === getRuleUniquenessKey(candidate);
+  });
+
+  if (duplicate) {
+    throw new Error(`Duplicate rule: ${candidate.pattern}`);
+  }
+}
+
+function getRuleUniquenessKey(
+  rule: Pick<Rule, "pattern" | "action" | "matchMode" | "category">
+): string {
+  return [
+    normalizeTagText(rule.pattern),
+    rule.action,
+    rule.matchMode,
+    rule.category,
+  ].join("\u0000");
 }
 
 async function saveRules(rules: readonly Rule[]): Promise<void> {

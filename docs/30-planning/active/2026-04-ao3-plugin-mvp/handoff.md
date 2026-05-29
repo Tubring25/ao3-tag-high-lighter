@@ -56,7 +56,7 @@
 
 - `npm run build` 通过
 - `npm run lint` 通过
-- `npm run test` 全部 PASS（97/97）
+- `npm run test` 全部 PASS（100/100）
 
 ## 下一步
 

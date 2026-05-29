@@ -97,6 +97,47 @@ describe("ruleStorage", () => {
     expect(sendMessage).toHaveBeenCalledWith({ type: "RULES_UPDATED" });
   });
 
+  it("rejects duplicate rules with the same normalized pattern, action, match mode, and category", async () => {
+    store[STORAGE_KEY_RULES] = [
+      createStoredRule({
+        pattern: "  Slow   Burn ",
+        action: "highlight",
+        matchMode: "contains",
+        category: "all",
+      }),
+    ];
+
+    await expect(
+      addRule({
+        pattern: "slow burn",
+        action: "highlight",
+        matchMode: "contains",
+        category: "all",
+        enabled: true,
+      })
+    ).rejects.toThrow("Duplicate rule");
+  });
+
+  it("allows rules with the same pattern when action differs", async () => {
+    const existing = createStoredRule({
+      pattern: "Fluff",
+      action: "highlight",
+      matchMode: "contains",
+      category: "all",
+    });
+    store[STORAGE_KEY_RULES] = [existing];
+
+    const created = await addRule({
+      pattern: "Fluff",
+      action: "warn",
+      matchMode: "contains",
+      category: "all",
+      enabled: true,
+    });
+
+    expect(store[STORAGE_KEY_RULES]).toEqual([existing, created]);
+  });
+
   it("gets rules by id", async () => {
     const rule = createStoredRule();
     store[STORAGE_KEY_RULES] = [rule];
@@ -126,6 +167,20 @@ describe("ruleStorage", () => {
     });
     expect(store[STORAGE_KEY_RULES]).toEqual([updated]);
     expect(sendMessage).toHaveBeenCalledWith({ type: "RULES_UPDATED" });
+  });
+
+  it("rejects updates that would duplicate another rule", async () => {
+    store[STORAGE_KEY_RULES] = [
+      createStoredRule({ id: "rule-1", pattern: "Fluff", action: "highlight" }),
+      createStoredRule({ id: "rule-2", pattern: "Angst", action: "warn" }),
+    ];
+
+    await expect(
+      updateRule("rule-2", {
+        pattern: "fluff",
+        action: "highlight",
+      })
+    ).rejects.toThrow("Duplicate rule");
   });
 
   it("throws when updating a missing rule", async () => {
