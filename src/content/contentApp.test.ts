@@ -211,6 +211,7 @@ describe("startContentApp", () => {
 
   it("refreshes rules and renders again when RULES_UPDATED arrives", async () => {
     const work = createWork();
+    const reparsedWork = createWork({ id: "work-2" });
     const firstRule = createRule({ id: "rule-1", pattern: "Slow Burn" });
     const secondRule = createRule({ id: "rule-2", pattern: "Angst" });
     const firstResult = createMatchResult({ tagMatches: [{ tagId: "tag-1", ruleId: "rule-1", action: "highlight" }] });
@@ -225,13 +226,15 @@ describe("startContentApp", () => {
       addMessageListener: listenerRef.addMessageListener,
     });
     listRules.mockResolvedValueOnce([firstRule]).mockResolvedValueOnce([secondRule]);
+    deps.parseAo3Works = vi.fn().mockReturnValueOnce([work]).mockReturnValueOnce([reparsedWork]);
 
     await startContentApp(deps);
     listenerRef.listener?.({ type: "RULES_UPDATED" });
     await flushAsyncHandlers();
 
     expect(listRules).toHaveBeenCalledTimes(2);
-    expect(renderMatches).toHaveBeenLastCalledWith([work], secondResult, { hideWorkMode: "collapse" });
+    expect(deps.parseAo3Works).toHaveBeenCalledTimes(2);
+    expect(renderMatches).toHaveBeenLastCalledWith([reparsedWork], secondResult, { hideWorkMode: "collapse" });
   });
 
   it("clears old rendering when RULES_UPDATED leaves no rules", async () => {
@@ -392,13 +395,14 @@ function createRule(overrides: Partial<Rule> = {}): Rule {
   };
 }
 
-function createWork(): ParsedWork {
+function createWork(overrides: Partial<ParsedWork> = {}): ParsedWork {
   const element = document.createElement("article");
   const tagElement = document.createElement("a");
   return {
     id: "work-1",
     element,
     tags: [createTag(tagElement)],
+    ...overrides,
   };
 }
 

@@ -90,6 +90,7 @@ src/
 
   options/
     index.ts
+    optionsApp.ts          # options 可测试规则管理控制器
     options.css
 
   shared/

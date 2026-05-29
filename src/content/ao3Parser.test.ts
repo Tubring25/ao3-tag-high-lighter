@@ -1,4 +1,8 @@
 import { parseAo3Works } from "./ao3Parser";
+import { matchRules } from "../core/ruleEngine";
+import { renderMatches } from "./renderer";
+import type { Rule } from "../core/types";
+import searchResultsFixture from "../../examples/AGENTS.html?raw";
 
 describe("parseAo3Works", () => {
   it("parses works and tags from an AO3 works listing fragment", () => {
@@ -150,6 +154,63 @@ describe("parseAo3Works", () => {
 
     const result = parseAo3Works(document);
     expect(result).toEqual([{ id: "work_456", element: expect.any(HTMLElement), tags: [] }]);
+  });
+
+  it("parses listing tags even when they are not wrapped in ul.tags", () => {
+    document.body.innerHTML = `
+      <ol class="work index group">
+        <li id="work_987" class="work blurb group">
+          <blockquote>
+            <p>Search result summary</p>
+          </blockquote>
+          <ul class="commas">
+            <li class="freeforms">
+              <a class="tag" href="/tags/Fluff/works">Fluff</a>
+            </li>
+          </ul>
+        </li>
+      </ol>
+    `;
+
+    const result = parseAo3Works(document);
+    expect(result).toHaveLength(1);
+    expect(result[0].tags).toEqual([
+      expect.objectContaining({
+        id: "work_987:freeform:0",
+        text: "Fluff",
+        normalizedText: "fluff",
+        category: "freeform",
+      }),
+    ]);
+  });
+
+  it("parses and renders matches from the saved AO3 search results fixture", () => {
+    const fixture = new DOMParser().parseFromString(
+      searchResultsFixture,
+      "text/html"
+    );
+
+    const works = parseAo3Works(fixture);
+    const rule: Rule = {
+      id: "rule-fluff",
+      pattern: "Fluff",
+      action: "highlight",
+      matchMode: "contains",
+      category: "all",
+      enabled: true,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    const result = matchRules(works, [rule]);
+
+    renderMatches(works, result);
+
+    expect(works.length).toBeGreaterThan(0);
+    expect(works.flatMap((work) => work.tags).some((tag) => tag.text.includes("Fluff"))).toBe(
+      true
+    );
+    expect(result.tagMatches.length).toBeGreaterThan(0);
+    expect(fixture.querySelectorAll('[data-ao3th-action="highlight"]').length).toBeGreaterThan(0);
   });
 
   it("parses multiple works from a listing page", () => {

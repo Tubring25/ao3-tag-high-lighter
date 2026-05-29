@@ -28,39 +28,40 @@ function parseListingPage(root: ParentNode): ParsedWork[] {
     const workId = workEl.id;
     if (!workId) continue;
 
-    const tags: ParsedTag[] = [];
-    const tagList = workEl.querySelector("ul.tags");
-    if (!tagList) continue;
-
-    const categoryCounters: Record<string, number> = {};
-
-    for (const li of tagList.querySelectorAll<HTMLElement>("li")) {
-      const category = detectListingCategory(li);
-      if (!category) continue;
-
-      const anchor = li.querySelector<HTMLElement>("a.tag");
-      if (!anchor) continue;
-
-      const text = anchor.textContent?.trim() ?? "";
-      if (!text) continue;
-
-      const count = categoryCounters[category] ?? 0;
-      categoryCounters[category] = count + 1;
-
-      tags.push({
-        id: `${workId}:${category}:${count}`,
-        text,
-        normalizedText: normalizeTagText(text),
-        category,
-        element: anchor,
-        workId,
-      });
-    }
-
-    works.push({ id: workId, element: workEl, tags });
+    works.push({ id: workId, element: workEl, tags: parseListingTags(workEl, workId) });
   }
 
   return works;
+}
+
+function parseListingTags(workEl: HTMLElement, workId: string): ParsedTag[] {
+  const tags: ParsedTag[] = [];
+  const categoryCounters: Record<string, number> = {};
+
+  for (const li of workEl.querySelectorAll<HTMLElement>("li")) {
+    const category = detectListingCategory(li);
+    if (!category) continue;
+
+    const anchor = li.querySelector<HTMLElement>("a.tag");
+    if (!anchor) continue;
+
+    const text = anchor.textContent?.trim() ?? "";
+    if (!text) continue;
+
+    const count = categoryCounters[category] ?? 0;
+    categoryCounters[category] = count + 1;
+
+    tags.push({
+      id: `${workId}:${category}:${count}`,
+      text,
+      normalizedText: normalizeTagText(text),
+      category,
+      element: anchor,
+      workId,
+    });
+  }
+
+  return tags;
 }
 
 function parseWorkDetailPage(root: ParentNode): ParsedWork[] {

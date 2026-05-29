@@ -38,6 +38,10 @@ input: {
 ]
 ```
 
+`content_scripts.js` 不能依赖 ESM `import`。`vite.config.ts` 在常规 Vite build 后会用 esbuild 重新把
+`src/content/index.ts` 打成单文件 classic script，覆盖 `dist/content/index.js`。验证时应确认该文件开头不是
+`import ...` / `export ...`。
+
 ## Build 输出验证
 
 运行 `npm run build` 后，`dist/` 应包含：
@@ -58,11 +62,12 @@ dist/
 
 1. 运行 `npm run build`
 2. 确认 `dist/manifest.json` 中 popup/options/content CSS 路径存在
-3. 打开 Chrome `chrome://extensions`
-4. 开启开发者模式并加载 `dist/`
-5. 打开 AO3 页面，检查 content script 是否注入
-6. 点击扩展图标，检查 popup 是否打开
-7. 进入扩展 options，检查 options 页面是否打开
+3. 确认 `dist/content/index.js` 是 classic script：文件开头不应有静态 `import`
+4. 打开 Chrome `chrome://extensions`
+5. 开启开发者模式并加载 `dist/`
+6. 打开 AO3 页面，检查 content script 是否注入
+7. 点击扩展图标，检查 popup 是否打开
+8. 进入扩展 options，检查 options 页面是否打开
 
 ## 开发模式
 

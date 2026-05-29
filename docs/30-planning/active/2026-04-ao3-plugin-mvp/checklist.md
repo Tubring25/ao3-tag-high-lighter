@@ -37,12 +37,12 @@
 - [x] G1 — popup 命中统计
 - [x] G2 — popup 全局开关
 - [x] G3 — popup → options 跳转
-- [ ] H1 — options 规则列表
-- [ ] H2 — options 搜索筛选
-- [ ] H3 — options 新增规则
-- [ ] H4 — options 编辑规则
-- [ ] H5 — options 删除规则
-- [ ] H6 — options 启停规则
+- [x] H1 — options 规则列表
+- [x] H2 — options 搜索筛选
+- [x] H3 — options 新增规则
+- [x] H4 — options 编辑规则
+- [x] H5 — options 删除规则
+- [x] H6 — options 启停规则
 
 ## 第 4 阶段：稳定性
 

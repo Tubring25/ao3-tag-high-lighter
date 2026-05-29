@@ -83,7 +83,7 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     cachedRules = await deps.listRules();
     if (!cachedSettings?.extensionEnabled) return;
 
-    ensureWorksParsed();
+    refreshWorks();
     runMatchAndRender();
     syncHoverMenu();
   }
@@ -98,13 +98,12 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     }
 
     cachedRules = await deps.listRules();
-    ensureWorksParsed();
+    refreshWorks();
     runMatchAndRender();
     syncHoverMenu();
   }
 
-  function ensureWorksParsed(): void {
-    if (cachedWorks.length > 0) return;
+  function refreshWorks(): void {
     cachedWorks = deps.parseAo3Works(deps.root);
   }
 

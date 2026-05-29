@@ -1,7 +1,10 @@
 import { defineConfig } from "vite";
+import type { Plugin } from "vite";
+import { build as buildWithEsbuild } from "esbuild";
 
 export default defineConfig({
   publicDir: "public",
+  plugins: [bundleContentScriptAsClassicScript()],
   build: {
     emptyOutDir: true,
     outDir: "dist",
@@ -26,3 +29,23 @@ export default defineConfig({
     include: ["src/**/*.test.ts"]
   }
 });
+
+function bundleContentScriptAsClassicScript(): Plugin {
+  return {
+    name: "ao3th-content-classic-script",
+    apply: "build",
+    closeBundle: async () => {
+      await buildWithEsbuild({
+        entryPoints: ["src/content/index.ts"],
+        outfile: "dist/content/index.js",
+        bundle: true,
+        format: "iife",
+        target: "es2022",
+        minify: true,
+        loader: {
+          ".css": "empty"
+        }
+      });
+    }
+  };
+}

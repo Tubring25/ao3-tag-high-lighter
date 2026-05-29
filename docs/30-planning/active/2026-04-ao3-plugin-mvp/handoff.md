@@ -1,6 +1,6 @@
 # Handoff — 当前状态
 
-**最后更新：** 2026-05-25
+**最后更新：** 2026-05-27
 
 ## 已完成
 
@@ -48,19 +48,20 @@
 - **`src/content/contentApp.ts`** — 已接入 hover menu；quick-add 成功后刷新 rules 并即时重渲染当前页
 - **`src/content/hitStats.ts` / `src/shared/message.ts`** — `GET_HIT_STATS` 协议与当前页命中统计已实现
 - **`src/popup/popupApp.ts` / `src/popup/index.ts`** — popup 已实现：命中统计、全局开关、打开 options
+- **`src/options/optionsApp.ts` / `src/options/index.ts`** — options 规则管理已实现：列表、搜索/筛选、新增、编辑、删除、启停
 
 ## 当前状态
 
-第 1 阶段核心逻辑模块（B1–B4、C2–C7）、渲染模块（D1–D5）、存储模块（E1–E3）、content 最小闭环、background 消息中转、第 2 阶段 hover quick-add（F1–F4）和 Toast（I1），以及第 3 阶段 popup（G1–G3）已全部实现并通过测试。工程基线：
+第 1 阶段核心闭环、第 2 阶段页面交互，以及第 3 阶段管理界面（popup G1–G3、options H1–H6）已全部实现并通过测试。工程基线：
 
 - `npm run build` 通过
 - `npm run lint` 通过
-- `npm run test` 全部 PASS（84/84）
+- `npm run test` 全部 PASS（97/97）
 
 ## 下一步
 
-1. 实现 options UI（H1–H6）：规则列表、搜索、新增、编辑、删除、启停
-2. 后续补 MutationObserver / 防抖 / 错误兜底（I3–I6）
+1. 补稳定性 I2–I6：折叠占位条增强、MutationObserver、清理旧样式增强、防抖/节流、错误兜底
+2. 浏览器手动 QA：加载 `dist/`，验证 AO3 页面 quick-add、popup、options 全链路
 
 ## 先读什么
 
@@ -76,3 +77,4 @@
 - `src/content/toast.ts` — Toast 反馈
 - `src/content/hitStats.ts` — 当前页命中统计
 - `src/popup/popupApp.ts` — popup 控制器
+- `src/options/optionsApp.ts` — options 规则管理控制器

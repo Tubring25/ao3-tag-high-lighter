@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-以下模块已完成并通过测试（84/84 tests pass）：
+以下模块已完成并通过测试（97/97 tests pass）：
 
 | 模块 | 文件 | 状态 |
 |---|---|---|
@@ -19,6 +19,7 @@
 | Hover quick-add | `src/content/hoverMenu.ts` | ✅ 完成 |
 | Toast 反馈 | `src/content/toast.ts` | ✅ 完成 |
 | Popup | `src/popup/popupApp.ts` / `src/popup/index.ts` | ✅ 完成 |
+| Options 规则管理 | `src/options/optionsApp.ts` / `src/options/index.ts` | ✅ 完成 |
 | content 样式 | `src/styles/content.css` | ✅ 完成 |
 
 以下文件存在骨架（stub），需要实现：
@@ -26,7 +27,6 @@
 | 文件 | 当前状态 |
 |---|---|
 | `src/content/pageObserver.ts` | stub |
-| `src/options/index.ts` | scaffold HTML |
 
 ## 推荐实现顺序
 
@@ -45,7 +45,7 @@
 
 阶段 3：管理界面
   ├── 步骤 9：popup（G1–G3） → 已完成
-  └── 步骤 10：options 页（H1–H6） → 06-options.md
+  └── 步骤 10：options 页（H1–H6） → 已完成
 
 阶段 4：稳定性
   └── 步骤 11：Observer / 防抖 / 错误兜底（I2–I6） → 08-stability.md
@@ -71,5 +71,5 @@
 
 - **阶段 1 完成标志：** 在 `chrome://extensions` 加载后，打开 AO3 列表页，写死几条规则就能看到 highlight / mute / warn / hideWork 效果。
 - **阶段 2 完成标志：** 悬停 tag 出现按钮，点击可创建规则，页面即时更新。当前已完成。
-- **阶段 3 完成标志：** popup 显示命中统计 + 全局开关；options 可完整管理规则。
+- **阶段 3 完成标志：** popup 显示命中统计 + 全局开关；options 可完整管理规则。当前已完成。
 - **阶段 4 完成标志：** 动态加载、页面切换、大量规则场景下不卡顿不报错。
