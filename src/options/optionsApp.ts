@@ -1,4 +1,5 @@
 import type { MatchMode, Rule, RuleAction, TagCategory } from "../core/types";
+import { LOG_PREFIX } from "../shared/constants";
 import {
   addRule as defaultAddRule,
   deleteRule as defaultDeleteRule,
@@ -354,7 +355,7 @@ function createRealDeps(): OptionsAppDeps {
     confirmDelete: (rule) => window.confirm(`Delete rule "${rule.pattern}"?`),
     alertError: (message) => window.alert(message),
     logError: (error) => {
-      console.error("[AO3 Tag Highlighter] Options error:", error);
+      console.error(`${LOG_PREFIX} Options error:`, error);
     },
   };
 }

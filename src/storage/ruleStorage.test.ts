@@ -70,6 +70,25 @@ describe("ruleStorage", () => {
     await expect(listRules()).resolves.toEqual([]);
   });
 
+  it("returns an empty list when storage read fails", async () => {
+    vi.stubGlobal("chrome", {
+      storage: {
+        local: {
+          get: vi.fn(async () => {
+            throw new Error("storage unavailable");
+          }),
+          set: vi.fn(),
+          remove: vi.fn(),
+        },
+      },
+      runtime: {
+        sendMessage,
+      },
+    });
+
+    await expect(listRules()).resolves.toEqual([]);
+  });
+
   it("filters out stored rules with removed or invalid actions", async () => {
     store[STORAGE_KEY_RULES] = [
       createStoredRule({ id: "valid-rule" }),

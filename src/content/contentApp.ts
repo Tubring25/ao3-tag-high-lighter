@@ -3,6 +3,7 @@ import type { MatchResult, ParsedWork, Rule, Settings } from "../core/types";
 import { listRules as defaultListRules } from "../storage/ruleStorage";
 import { getSettings as defaultGetSettings } from "../storage/settingsStorage";
 import type { HitStats, RuntimeMessage } from "../shared/message";
+import { LOG_PREFIX } from "../shared/constants";
 import { debounce as defaultDebounce } from "../shared/utils";
 import { parseAo3Works as defaultParseAo3Works } from "./ao3Parser";
 import { calculateHitStats as defaultCalculateHitStats } from "./hitStats";
@@ -77,30 +78,41 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     }
   }, 300);
 
-  deps.addMessageListener((message, sendResponse) => {
-    if (!isRuntimeMessage(message)) return;
+  try {
+    deps.addMessageListener((message, sendResponse) => {
+      if (!isRuntimeMessage(message)) return;
 
-    if (message.type === "GET_HIT_STATS") {
-      sendResponse?.(getHitStats());
-      return;
-    }
+      try {
+        if (message.type === "GET_HIT_STATS") {
+          sendResponse?.(getHitStats());
+          return;
+        }
 
-    if (message.type === "RULES_UPDATED") {
-      void handleRulesUpdated().catch(deps.logError);
-      return;
-    }
+        if (message.type === "RULES_UPDATED") {
+          void handleRulesUpdated().catch(deps.logError);
+          return;
+        }
 
-    void handleSettingsUpdated().catch(deps.logError);
-  });
+        void handleSettingsUpdated().catch(deps.logError);
+      } catch (error) {
+        deps.logError(error);
+        if (message.type === "GET_HIT_STATS") {
+          sendResponse?.(createEmptyHitStats(cachedRules.length));
+        }
+      }
+    });
 
-  cachedSettings = await deps.getSettings();
-  if (!cachedSettings.extensionEnabled) return;
+    cachedSettings = await deps.getSettings();
+    if (!cachedSettings.extensionEnabled) return;
 
-  cachedRules = await deps.listRules();
-  cachedWorks = deps.parseAo3Works(deps.root);
-  runMatchAndRender();
-  syncHoverMenu();
-  startObserver();
+    cachedRules = await deps.listRules();
+    refreshWorks();
+    runMatchAndRender();
+    syncHoverMenu();
+    startObserver();
+  } catch (error) {
+    deps.logError(error);
+  }
 
   async function handleRulesUpdated(): Promise<void> {
     cachedRules = await deps.listRules();
@@ -115,9 +127,9 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     cachedSettings = await deps.getSettings();
 
     if (!cachedSettings.extensionEnabled) {
-      deps.stopPageObserver();
-      deps.clearRenderedMatches(cachedWorks);
-      deps.unmountHoverMenu();
+      safeStopPageObserver();
+      safeClearRenderedMatches();
+      safeUnmountHoverMenu();
       return;
     }
 
@@ -129,23 +141,33 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
   }
 
   function refreshWorks(): void {
-    cachedWorks = deps.parseAo3Works(deps.root);
+    try {
+      cachedWorks = deps.parseAo3Works(deps.root);
+    } catch (error) {
+      cachedWorks = [];
+      latestMatchResult = null;
+      deps.logError(error);
+    }
   }
 
   function handleDomChanged(): void {
-    deps.clearRenderedMatches(cachedWorks);
+    safeClearRenderedMatches();
     refreshWorks();
     runMatchAndRender();
     syncHoverMenu();
   }
 
   function startObserver(): void {
-    deps.startPageObserver(debouncedHandleDomChanged);
+    try {
+      deps.startPageObserver(debouncedHandleDomChanged);
+    } catch (error) {
+      deps.logError(error);
+    }
   }
 
   function runMatchAndRender(): void {
     if (!cachedSettings?.extensionEnabled) {
-      deps.clearRenderedMatches(cachedWorks);
+      safeClearRenderedMatches();
       latestMatchResult = null;
       return;
     }
@@ -156,34 +178,76 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     }
 
     if (cachedRules.length === 0) {
-      deps.clearRenderedMatches(cachedWorks);
+      safeClearRenderedMatches();
       latestMatchResult = null;
       return;
     }
 
-    const result = deps.matchRules(cachedWorks, cachedRules);
-    latestMatchResult = result;
-    deps.renderMatches(cachedWorks, result, { hideWorkMode: cachedSettings.hideWorkMode });
+    try {
+      const result = deps.matchRules(cachedWorks, cachedRules);
+      latestMatchResult = result;
+      deps.renderMatches(cachedWorks, result, { hideWorkMode: cachedSettings.hideWorkMode });
+    } catch (error) {
+      latestMatchResult = null;
+      deps.logError(error);
+    }
   }
 
   function syncHoverMenu(): void {
-    if (!cachedSettings?.extensionEnabled || !cachedSettings.hoverButtonEnabled || cachedWorks.length === 0) {
-      deps.unmountHoverMenu();
-      return;
-    }
+    try {
+      if (!cachedSettings?.extensionEnabled || !cachedSettings.hoverButtonEnabled || cachedWorks.length === 0) {
+        safeUnmountHoverMenu();
+        return;
+      }
 
-    deps.mountHoverMenu(cachedWorks, cachedSettings, {
-      onRuleCreated: handleQuickAddRuleCreated,
-    });
+      deps.mountHoverMenu(cachedWorks, cachedSettings, {
+        onRuleCreated: handleQuickAddRuleCreated,
+      });
+    } catch (error) {
+      deps.logError(error);
+    }
   }
 
   async function handleQuickAddRuleCreated(): Promise<void> {
-    cachedRules = await deps.listRules();
-    runMatchAndRender();
+    try {
+      cachedRules = await deps.listRules();
+      runMatchAndRender();
+    } catch (error) {
+      deps.logError(error);
+    }
   }
 
   function getHitStats(): HitStats {
-    return deps.calculateHitStats(latestMatchResult, cachedRules.length, cachedWorks);
+    try {
+      return deps.calculateHitStats(latestMatchResult, cachedRules.length, cachedWorks);
+    } catch (error) {
+      deps.logError(error);
+      return createEmptyHitStats(cachedRules.length);
+    }
+  }
+
+  function safeClearRenderedMatches(): void {
+    try {
+      deps.clearRenderedMatches(cachedWorks);
+    } catch (error) {
+      deps.logError(error);
+    }
+  }
+
+  function safeStopPageObserver(): void {
+    try {
+      deps.stopPageObserver();
+    } catch (error) {
+      deps.logError(error);
+    }
+  }
+
+  function safeUnmountHoverMenu(): void {
+    try {
+      deps.unmountHoverMenu();
+    } catch (error) {
+      deps.logError(error);
+    }
   }
 }
 
@@ -212,8 +276,17 @@ function createRealDeps(): ContentAppDeps {
       });
     },
     logError: (error) => {
-      console.error("[AO3 Tag Highlighter] Content app error:", error);
+      console.error(`${LOG_PREFIX} Content app error:`, error);
     },
+  };
+}
+
+function createEmptyHitStats(totalRules: number): HitStats {
+  return {
+    highlight: 0,
+    warn: 0,
+    hideWork: 0,
+    totalRules,
   };
 }
 

@@ -48,6 +48,25 @@ describe("settingsStorage", () => {
     await expect(getSettings()).resolves.toEqual(DEFAULT_SETTINGS);
   });
 
+  it("returns default settings when storage read fails", async () => {
+    vi.stubGlobal("chrome", {
+      storage: {
+        local: {
+          get: vi.fn(async () => {
+            throw new Error("storage unavailable");
+          }),
+          set: vi.fn(),
+          remove: vi.fn(),
+        },
+      },
+      runtime: {
+        sendMessage,
+      },
+    });
+
+    await expect(getSettings()).resolves.toEqual(DEFAULT_SETTINGS);
+  });
+
   it("merges stored partial settings with defaults", async () => {
     store[STORAGE_KEY_SETTINGS] = {
       extensionEnabled: false,

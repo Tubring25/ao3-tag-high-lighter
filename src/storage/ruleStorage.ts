@@ -29,9 +29,13 @@ interface ChromeLike {
 }
 
 export async function listRules(): Promise<Rule[]> {
-  const result = await getChrome().storage.local.get(STORAGE_KEY_RULES);
-  const rules = result[STORAGE_KEY_RULES];
-  return Array.isArray(rules) ? rules.filter(isValidStoredRule) : [];
+  try {
+    const result = await getChrome().storage.local.get(STORAGE_KEY_RULES);
+    const rules = result[STORAGE_KEY_RULES];
+    return Array.isArray(rules) ? rules.filter(isValidStoredRule) : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function getRule(id: string): Promise<Rule | null> {

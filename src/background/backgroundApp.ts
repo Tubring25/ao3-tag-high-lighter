@@ -1,4 +1,5 @@
 import type { RuntimeMessage } from "../shared/message";
+import { LOG_PREFIX } from "../shared/constants";
 
 export interface BackgroundTab {
   id?: number;
@@ -20,6 +21,7 @@ export interface BackgroundAppDeps {
   ): void;
   addInstalledListener(callback: (details: BackgroundInstalledDetails) => void): void;
   logInfo(message: string): void;
+  logError(error: unknown): void;
 }
 
 interface ChromeLike {
@@ -52,8 +54,8 @@ export function initBackgroundApp(deps: BackgroundAppDeps = createRealDeps()): v
     if (!isRuntimeMessage(message)) return;
 
     sendResponse?.({ ok: true });
-    void broadcastToAo3Tabs(deps, message).catch(() => {
-      // A query-level failure should not keep the sender waiting or crash the worker.
+    void broadcastToAo3Tabs(deps, message).catch((error) => {
+      deps.logError(error);
     });
   });
 
@@ -121,6 +123,9 @@ function createRealDeps(): BackgroundAppDeps {
     },
     logInfo: (message) => {
       console.info(message);
+    },
+    logError: (error) => {
+      console.error(`${LOG_PREFIX} Background error:`, error);
     },
   };
 }

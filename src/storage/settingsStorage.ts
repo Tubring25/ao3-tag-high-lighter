@@ -23,15 +23,19 @@ interface ChromeLike {
 }
 
 export async function getSettings(): Promise<Settings> {
-  const result = await getChrome().storage.local.get(STORAGE_KEY_SETTINGS);
-  const stored = result[STORAGE_KEY_SETTINGS];
-  const settings = {
-    ...DEFAULT_SETTINGS,
-    ...(isObjectRecord(stored) ? stored : {}),
-  };
+  try {
+    const result = await getChrome().storage.local.get(STORAGE_KEY_SETTINGS);
+    const stored = result[STORAGE_KEY_SETTINGS];
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      ...(isObjectRecord(stored) ? stored : {}),
+    };
 
-  validateSettingsInput(settings);
-  return settings;
+    validateSettingsInput(settings);
+    return settings;
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
 }
 
 export async function saveSettings(patch: Partial<Settings>): Promise<Settings> {

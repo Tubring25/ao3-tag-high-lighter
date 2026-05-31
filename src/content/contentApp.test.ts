@@ -341,6 +341,70 @@ describe("startContentApp", () => {
     expect(logError).toHaveBeenCalledWith(expect.any(Error));
   });
 
+  it("logs parser errors during initialization instead of throwing", async () => {
+    const parseError = new Error("Parse failed");
+    const { deps, logError, renderMatches } = createDeps({
+      parseAo3Works: vi.fn(() => {
+        throw parseError;
+      }),
+    });
+
+    await expect(startContentApp(deps)).resolves.toBeUndefined();
+
+    expect(logError).toHaveBeenCalledWith(parseError);
+    expect(renderMatches).not.toHaveBeenCalled();
+  });
+
+  it("logs matcher errors instead of throwing", async () => {
+    const matchError = new Error("Match failed");
+    const { deps, logError, renderMatches } = createDeps({
+      matchRules: vi.fn(() => {
+        throw matchError;
+      }),
+    });
+
+    await expect(startContentApp(deps)).resolves.toBeUndefined();
+
+    expect(logError).toHaveBeenCalledWith(matchError);
+    expect(renderMatches).not.toHaveBeenCalled();
+  });
+
+  it("logs renderer errors instead of throwing", async () => {
+    const renderError = new Error("Render failed");
+    const { deps, logError } = createDeps({
+      renderMatches: vi.fn(() => {
+        throw renderError;
+      }),
+    });
+
+    await expect(startContentApp(deps)).resolves.toBeUndefined();
+
+    expect(logError).toHaveBeenCalledWith(renderError);
+  });
+
+  it("returns safe hit stats when stats calculation fails", async () => {
+    const listenerRef = createListenerRef();
+    const sendResponse = vi.fn();
+    const statsError = new Error("Stats failed");
+    const { deps, logError } = createDeps({
+      addMessageListener: listenerRef.addMessageListener,
+      calculateHitStats: vi.fn(() => {
+        throw statsError;
+      }),
+    });
+
+    await startContentApp(deps);
+    expect(() => listenerRef.listener?.({ type: "GET_HIT_STATS" }, sendResponse)).not.toThrow();
+
+    expect(logError).toHaveBeenCalledWith(statsError);
+    expect(sendResponse).toHaveBeenCalledWith({
+      highlight: 0,
+      warn: 0,
+      hideWork: 0,
+      totalRules: 1,
+    });
+  });
+
   it("skips rendering when parser returns no works", async () => {
     const { deps, matchRules, renderMatches, clearRenderedMatches } = createDeps({
       parseAo3Works: vi.fn(() => []),

@@ -81,6 +81,26 @@ describe("initBackgroundApp", () => {
     expect(sendMessageToTab).toHaveBeenCalledWith(2, { type: "RULES_UPDATED" });
   });
 
+  it("logs query failures without throwing", async () => {
+    const listenerRef = createListenerRef();
+    const logError = vi.fn();
+    const queryError = new Error("Query failed");
+    const { deps, sendMessageToTab } = createDeps({
+      addMessageListener: listenerRef.addMessageListener,
+      queryAo3Tabs: vi.fn(async () => {
+        throw queryError;
+      }),
+      logError,
+    });
+
+    initBackgroundApp(deps);
+    expect(() => listenerRef.listener?.({ type: "RULES_UPDATED" }, vi.fn())).not.toThrow();
+    await flushAsyncHandlers();
+
+    expect(logError).toHaveBeenCalledWith(queryError);
+    expect(sendMessageToTab).not.toHaveBeenCalled();
+  });
+
   it("acknowledges handled messages immediately", () => {
     const listenerRef = createListenerRef();
     const sendResponse = vi.fn();
@@ -101,6 +121,7 @@ function createDeps(overrides: Partial<BackgroundAppDeps> = {}) {
   const addMessageListener = vi.fn();
   const addInstalledListener = vi.fn();
   const logInfo = vi.fn();
+  const logError = vi.fn();
 
   const deps: BackgroundAppDeps = {
     queryAo3Tabs,
@@ -108,6 +129,7 @@ function createDeps(overrides: Partial<BackgroundAppDeps> = {}) {
     addMessageListener,
     addInstalledListener,
     logInfo,
+    logError,
     ...overrides,
   };
 
@@ -118,6 +140,7 @@ function createDeps(overrides: Partial<BackgroundAppDeps> = {}) {
     addMessageListener: deps.addMessageListener as typeof addMessageListener,
     addInstalledListener: deps.addInstalledListener as typeof addInstalledListener,
     logInfo: deps.logInfo as typeof logInfo,
+    logError: deps.logError as typeof logError,
   };
 }
 

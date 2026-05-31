@@ -1,4 +1,5 @@
 import type { Settings } from "../core/types";
+import { LOG_PREFIX } from "../shared/constants";
 import type { HitStats, RuntimeMessage } from "../shared/message";
 import {
   getSettings as defaultGetSettings,
@@ -163,7 +164,7 @@ function createRealDeps(): PopupAppDeps {
       getChrome().runtime?.openOptionsPage();
     },
     logError: (error) => {
-      console.error("[AO3 Tag Highlighter] Popup error:", error);
+      console.error(`${LOG_PREFIX} Popup error:`, error);
     },
   };
 }

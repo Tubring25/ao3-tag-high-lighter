@@ -1,4 +1,5 @@
 import type { ParsedTag, ParsedWork, Rule, Settings } from "../core/types";
+import { LOG_PREFIX } from "../shared/constants";
 import { addRule as defaultAddRule } from "../storage/ruleStorage";
 import { showToast as defaultShowToast } from "./toast";
 
@@ -69,7 +70,9 @@ export function mountHoverMenu(
   addManagedListener(hoverMenu, "mouseenter", cancelHide);
   addManagedListener(hoverMenu, "mouseleave", scheduleHide);
   addManagedListener(hoverMenu, "click", (event) => {
-    void handleMenuClick(event, settings, options);
+    void handleMenuClick(event, settings, options).catch((error) => {
+      console.error(`${LOG_PREFIX} Hover menu error:`, error);
+    });
   });
 
   addManagedListener(document, "click", hideMenuAndButton);
