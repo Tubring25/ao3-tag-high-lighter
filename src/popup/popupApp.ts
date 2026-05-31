@@ -27,7 +27,6 @@ interface ChromeLike {
 const EMPTY_STATS: HitStats = {
   highlight: 0,
   warn: 0,
-  mute: 0,
   hideWork: 0,
   totalRules: 0,
 };
@@ -116,7 +115,6 @@ function renderStats(container: HTMLElement, stats: HitStats | null): void {
   const rows: Array<[string, string, number, string]> = [
     ["Highlight", "highlight", stats.highlight, "tags"],
     ["Warn", "warn", stats.warn, "works"],
-    ["Mute", "mute", stats.mute, "tags"],
     ["Hide work", "hideWork", stats.hideWork, "works"],
     ["Rules", "rules", stats.totalRules, "rules"],
   ];
@@ -175,7 +173,6 @@ function isHitStats(value: unknown): value is HitStats {
   return (
     typeof value.highlight === "number" &&
     typeof value.warn === "number" &&
-    typeof value.mute === "number" &&
     typeof value.hideWork === "number" &&
     typeof value.totalRules === "number"
   );

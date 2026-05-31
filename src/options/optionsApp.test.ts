@@ -57,13 +57,13 @@ describe("renderOptionsApp", () => {
 
   it("adds a new rule from the form", async () => {
     const container = document.createElement("div");
-    const createdRule = createRule({ id: "rule-3", pattern: "Fluff", action: "mute" });
+    const createdRule = createRule({ id: "rule-3", pattern: "Fluff", action: "warn" });
     const addRule = vi.fn(async () => createdRule);
 
     await renderOptionsApp(container, createDeps({ addRule }));
     getButton(container, "[data-options-add]").click();
     getInput(container, '[name="pattern"]').value = "Fluff";
-    getSelect(container, '[name="action"]').value = "mute";
+    getSelect(container, '[name="action"]').value = "warn";
     getSelect(container, '[name="matchMode"]').value = "contains";
     getSelect(container, '[name="category"]').value = "freeform";
     getForm(container).dispatchEvent(new SubmitEvent("submit"));
@@ -71,7 +71,7 @@ describe("renderOptionsApp", () => {
 
     expect(addRule).toHaveBeenCalledWith({
       pattern: "Fluff",
-      action: "mute",
+      action: "warn",
       matchMode: "contains",
       category: "freeform",
       enabled: true,

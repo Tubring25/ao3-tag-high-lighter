@@ -32,13 +32,12 @@ describe("renderPopupApp", () => {
     await renderPopupApp(
       container,
       createDeps({
-        sendMessageToTab: vi.fn(async () => createHitStats({ highlight: 2, warn: 1, mute: 3, hideWork: 1, totalRules: 7 })),
+        sendMessageToTab: vi.fn(async () => createHitStats({ highlight: 2, warn: 1, hideWork: 1, totalRules: 7 })),
       })
     );
 
     expect(container.textContent).toContain("2 tags");
     expect(container.textContent).toContain("1 works");
-    expect(container.textContent).toContain("3 tags");
     expect(container.textContent).toContain("7 rules");
   });
 
@@ -103,7 +102,6 @@ function createHitStats(overrides: Partial<HitStats> = {}): HitStats {
   return {
     highlight: 1,
     warn: 0,
-    mute: 0,
     hideWork: 0,
     totalRules: 1,
     ...overrides,

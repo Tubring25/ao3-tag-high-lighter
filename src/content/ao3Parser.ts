@@ -99,7 +99,7 @@ function parseWorkDetailPage(root: ParentNode): ParsedWork[] {
     }
   }
 
-  return [{ id: workId, element: workskin, tags }];
+  return [{ id: workId, element: workskin, tags, isWorkDetailPage: true }];
 }
 
 function getWorkDetailId(): string | null {

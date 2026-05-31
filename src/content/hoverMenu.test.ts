@@ -39,7 +39,6 @@ describe("hoverMenu", () => {
     expect(getMenuOptions().map((option) => option.textContent)).toEqual([
       "Highlight",
       "Warn",
-      "Mute",
       "Hide work",
     ]);
   });

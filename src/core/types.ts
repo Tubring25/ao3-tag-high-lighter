@@ -1,4 +1,4 @@
-export type RuleAction = "highlight" | "warn" | "mute" | "hideWork";
+export type RuleAction = "highlight" | "warn" | "hideWork";
 
 export type MatchMode = "exact" | "contains" | "wildcard";
 
@@ -46,6 +46,7 @@ export interface ParsedWork {
   id: string;
   element: HTMLElement;
   tags: ParsedTag[];
+  isWorkDetailPage?: boolean;
 }
 
 export interface TagMatch {

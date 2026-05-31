@@ -22,7 +22,7 @@ export interface OptionsAppDeps {
   logError(error: unknown): void;
 }
 
-const ACTIONS: readonly RuleAction[] = ["highlight", "warn", "mute", "hideWork"];
+const ACTIONS: readonly RuleAction[] = ["highlight", "warn", "hideWork"];
 const MATCH_MODES: readonly MatchMode[] = ["exact", "contains", "wildcard"];
 const CATEGORIES: readonly TagCategory[] = ["all", "relationship", "character", "freeform"];
 

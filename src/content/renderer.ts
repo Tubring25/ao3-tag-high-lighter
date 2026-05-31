@@ -17,9 +17,15 @@ export function renderMatches(
   options: RenderOptions = {}
 ): void {
   const hideWorkMode = options.hideWorkMode ?? "collapse";
+  const detailWorkIds = new Set(
+    works.filter((work) => work.isWorkDetailPage).map((work) => work.id)
+  );
   const collapsedWorkIds = new Set(
     matchResult.workSummaries
-      .filter((summary) => summary.hasHideWork && hideWorkMode === "collapse")
+      .filter(
+        (summary) =>
+          summary.hasHideWork && hideWorkMode === "collapse" && !detailWorkIds.has(summary.workId)
+      )
       .map((summary) => summary.workId)
   );
 
@@ -29,14 +35,17 @@ export function renderMatches(
   const tagStates = groupTagMatches(matchResult.tagMatches);
 
   for (const [tagId, state] of tagStates) {
-    const tag = tagsById.get(tagId);
-    if (!tag) continue;
+    const item = tagsById.get(tagId);
+    if (!item) continue;
 
-    const action = resolveHighestPriorityAction(state.actions);
+    const effectiveActions = item.work.isWorkDetailPage
+      ? state.actions.filter((action) => action !== "hideWork")
+      : state.actions;
+    const action = resolveHighestPriorityAction(effectiveActions);
     if (!action) continue;
 
-    tag.element.dataset.ao3thAction = action;
-    tag.element.dataset.ao3thRuleIds = state.ruleIds.join(",");
+    item.tag.element.dataset.ao3thAction = action;
+    item.tag.element.dataset.ao3thRuleIds = state.ruleIds.join(",");
   }
 
   const worksById = new Map(works.map((work) => [work.id, work]));
@@ -69,11 +78,11 @@ export function clearRenderedMatches(
 }
 
 function mapTagsById(works: readonly ParsedWork[]) {
-  const tagsById = new Map<string, ParsedWork["tags"][number]>();
+  const tagsById = new Map<string, { tag: ParsedWork["tags"][number]; work: ParsedWork }>();
 
   for (const work of works) {
     for (const tag of work.tags) {
-      tagsById.set(tag.id, tag);
+      tagsById.set(tag.id, { tag, work });
     }
   }
 

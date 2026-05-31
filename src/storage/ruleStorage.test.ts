@@ -70,6 +70,15 @@ describe("ruleStorage", () => {
     await expect(listRules()).resolves.toEqual([]);
   });
 
+  it("filters out stored rules with removed or invalid actions", async () => {
+    store[STORAGE_KEY_RULES] = [
+      createStoredRule({ id: "valid-rule" }),
+      createStoredRule({ id: "invalid-action-rule", action: "unsupported" as Rule["action"] }),
+    ];
+
+    await expect(listRules()).resolves.toEqual([createStoredRule({ id: "valid-rule" })]);
+  });
+
   it("adds a rule with generated id and timestamps", async () => {
     vi.spyOn(Date, "now").mockReturnValue(12345);
 

@@ -1,17 +1,15 @@
 import { resolveHighestPriorityAction } from "./priority";
 
 describe("resolveHighestPriorityAction", () => {
-  it("prefers hideWork over warn, highlight, and mute", () => {
-    expect(resolveHighestPriorityAction(["mute", "highlight", "warn", "hideWork"])).toBe(
-      "hideWork"
-    );
+  it("prefers hideWork over warn and highlight", () => {
+    expect(resolveHighestPriorityAction(["highlight", "warn", "hideWork"])).toBe("hideWork");
   });
 
-  it("prefers warn over highlight and mute", () => {
-    expect(resolveHighestPriorityAction(["mute", "highlight", "warn"])).toBe("warn");
+  it("prefers warn over highlight", () => {
+    expect(resolveHighestPriorityAction(["highlight", "warn"])).toBe("warn");
   });
 
-  it("prefers highlight over mute", () => {
-    expect(resolveHighestPriorityAction(["mute", "highlight"])).toBe("highlight");
+  it("returns highlight when highlight is the only action", () => {
+    expect(resolveHighestPriorityAction(["highlight"])).toBe("highlight");
   });
 });

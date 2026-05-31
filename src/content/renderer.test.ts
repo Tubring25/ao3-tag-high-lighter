@@ -1,7 +1,7 @@
 import { renderMatches } from "./renderer";
 import type { MatchResult, ParsedTag, ParsedWork } from "../core/types";
 
-function createWork(): ParsedWork {
+function createWork(overrides: Partial<ParsedWork> = {}): ParsedWork {
   document.body.innerHTML = `
     <article id="work-1">
       <h4>Work title</h4>
@@ -25,6 +25,7 @@ function createWork(): ParsedWork {
       createTag("tag-1", "Slow Burn", "slow burn", tagOne),
       createTag("tag-2", "Major Character Death", "major character death", tagTwo),
     ],
+    ...overrides,
   };
 }
 
@@ -62,20 +63,6 @@ describe("renderMatches", () => {
     expect(work.tags[0].element.dataset.ao3thRuleIds).toBe("rule-highlight");
   });
 
-  it("applies mute styling state to matching tags", () => {
-    const work = createWork();
-
-    renderMatches(
-      [work],
-      createMatchResult({
-        tagMatches: [{ tagId: "tag-1", ruleId: "rule-mute", action: "mute" }],
-      })
-    );
-
-    expect(work.tags[0].element.dataset.ao3thAction).toBe("mute");
-    expect(work.tags[0].element.dataset.ao3thRuleIds).toBe("rule-mute");
-  });
-
   it("resolves multiple tag matches to the highest priority action", () => {
     const work = createWork();
 
@@ -83,14 +70,14 @@ describe("renderMatches", () => {
       [work],
       createMatchResult({
         tagMatches: [
-          { tagId: "tag-1", ruleId: "rule-mute", action: "mute" },
+          { tagId: "tag-1", ruleId: "rule-highlight", action: "highlight" },
           { tagId: "tag-1", ruleId: "rule-warn", action: "warn" },
         ],
       })
     );
 
     expect(work.tags[0].element.dataset.ao3thAction).toBe("warn");
-    expect(work.tags[0].element.dataset.ao3thRuleIds).toBe("rule-mute,rule-warn");
+    expect(work.tags[0].element.dataset.ao3thRuleIds).toBe("rule-highlight,rule-warn");
   });
 
   it("applies warn state to the work element", () => {
@@ -144,6 +131,45 @@ describe("renderMatches", () => {
 
     expect(work.element.dataset.ao3thExpanded).toBe("true");
     expect(placeholder?.textContent).toContain("Hide again");
+  });
+
+  it("does not collapse hideWork matches on work detail pages", () => {
+    const work = createWork({ isWorkDetailPage: true });
+
+    renderMatches(
+      [work],
+      createMatchResult({
+        workSummaries: [
+          {
+            workId: "work-1",
+            matchedRuleIds: ["rule-hide"],
+            hasWarn: false,
+            hasHideWork: true,
+          },
+        ],
+      })
+    );
+
+    expect(work.element.dataset.ao3thHidden).toBeUndefined();
+    expect(work.element.hidden).toBe(false);
+    expect(work.element.querySelector("[data-ao3th-collapse-placeholder]")).toBeNull();
+  });
+
+  it("ignores hideWork tag priority on work detail pages", () => {
+    const work = createWork({ isWorkDetailPage: true });
+
+    renderMatches(
+      [work],
+      createMatchResult({
+        tagMatches: [
+          { tagId: "tag-1", ruleId: "rule-highlight", action: "highlight" },
+          { tagId: "tag-1", ruleId: "rule-hide", action: "hideWork" },
+        ],
+      })
+    );
+
+    expect(work.tags[0].element.dataset.ao3thAction).toBe("highlight");
+    expect(work.tags[0].element.dataset.ao3thRuleIds).toBe("rule-highlight,rule-hide");
   });
 
   it("clears old render state before applying new matches", () => {

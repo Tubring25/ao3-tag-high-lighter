@@ -18,7 +18,6 @@ interface MenuAction {
 const MENU_ACTIONS: readonly MenuAction[] = [
   { action: "highlight", label: "Highlight" },
   { action: "warn", label: "Warn" },
-  { action: "mute", label: "Mute" },
   { action: "hideWork", label: "Hide work" },
 ];
 
@@ -280,6 +279,6 @@ function clampPosition(
 
 function isRuleAction(value: unknown): value is Rule["action"] {
   return (
-    value === "highlight" || value === "warn" || value === "mute" || value === "hideWork"
+    value === "highlight" || value === "warn" || value === "hideWork"
   );
 }

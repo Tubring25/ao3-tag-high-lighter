@@ -87,6 +87,7 @@ describe("parseAo3Works", () => {
       {
         id: "12345",
         element: expect.any(HTMLElement),
+        isWorkDetailPage: true,
         tags: [
           {
             id: "12345:relationship:0",

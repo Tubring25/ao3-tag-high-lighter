@@ -4,7 +4,7 @@ import { STORAGE_KEY_RULES } from "../shared/constants";
 import type { RuntimeMessage } from "../shared/message";
 import { generateId } from "../shared/utils";
 
-const VALID_ACTIONS: readonly Rule["action"][] = ["highlight", "warn", "mute", "hideWork"];
+const VALID_ACTIONS: readonly Rule["action"][] = ["highlight", "warn", "hideWork"];
 const VALID_MATCH_MODES: readonly Rule["matchMode"][] = ["exact", "contains", "wildcard"];
 const VALID_CATEGORIES: readonly Rule["category"][] = [
   "relationship",
@@ -31,7 +31,7 @@ interface ChromeLike {
 export async function listRules(): Promise<Rule[]> {
   const result = await getChrome().storage.local.get(STORAGE_KEY_RULES);
   const rules = result[STORAGE_KEY_RULES];
-  return Array.isArray(rules) ? (rules as Rule[]) : [];
+  return Array.isArray(rules) ? rules.filter(isValidStoredRule) : [];
 }
 
 export async function getRule(id: string): Promise<Rule | null> {
@@ -132,6 +132,15 @@ export function validateRuleInput(input: Partial<Rule>): void {
   }
 }
 
+function isValidStoredRule(value: unknown): value is Rule {
+  try {
+    validateRuleInput(value as Partial<Rule>);
+    return isObjectRecord(value) && typeof value.id === "string";
+  } catch {
+    return false;
+  }
+}
+
 function assertNoDuplicateRule(
   candidate: Pick<Rule, "pattern" | "action" | "matchMode" | "category">,
   rules: readonly Rule[],
@@ -176,4 +185,8 @@ function getChrome(): ChromeLike {
     throw new Error("Chrome extension API is unavailable");
   }
   return chromeApi;
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -1,7 +1,6 @@
 import type { RuleAction } from "./types";
 
 const ACTION_PRIORITY: Record<RuleAction, number> = {
-  mute: 0,
   highlight: 1,
   warn: 2,
   hideWork: 3,

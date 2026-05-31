@@ -21,7 +21,7 @@ export function applyWorkEffects(
     work.element.dataset.ao3thWarn = "true";
   }
 
-  if (!summary.hasHideWork) return;
+  if (!summary.hasHideWork || work.isWorkDetailPage) return;
 
   if (options.hideWorkMode === "hide") {
     work.element.dataset.ao3thHidden = "hide";

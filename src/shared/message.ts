@@ -12,7 +12,6 @@ export type RuntimeMessage =
 export interface HitStats {
   highlight: number;
   warn: number;
-  mute: number;
   hideWork: number;
   totalRules: number;
 }
