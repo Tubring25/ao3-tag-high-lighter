@@ -3,8 +3,13 @@ import type { MatchResult, ParsedWork, Rule, Settings } from "../core/types";
 import { listRules as defaultListRules } from "../storage/ruleStorage";
 import { getSettings as defaultGetSettings } from "../storage/settingsStorage";
 import type { HitStats, RuntimeMessage } from "../shared/message";
+import { debounce as defaultDebounce } from "../shared/utils";
 import { parseAo3Works as defaultParseAo3Works } from "./ao3Parser";
 import { calculateHitStats as defaultCalculateHitStats } from "./hitStats";
+import {
+  startPageObserver as defaultStartPageObserver,
+  stopPageObserver as defaultStopPageObserver,
+} from "./pageObserver";
 import {
   mountHoverMenu as defaultMountHoverMenu,
   unmountHoverMenu as defaultUnmountHoverMenu,
@@ -34,7 +39,17 @@ export interface ContentAppDeps {
     options: Pick<HoverMenuOptions, "onRuleCreated">
   ): void;
   unmountHoverMenu(): void;
-  calculateHitStats(matchResult: MatchResult | null, totalRules: number): HitStats;
+  calculateHitStats(
+    matchResult: MatchResult | null,
+    totalRules: number,
+    works: readonly ParsedWork[]
+  ): HitStats;
+  startPageObserver(onDomChange: () => void): void;
+  stopPageObserver(): void;
+  debounce<T extends (...args: Parameters<T>) => void>(
+    fn: T,
+    delayMs: number
+  ): (...args: Parameters<T>) => void;
   addMessageListener(callback: (message: unknown, sendResponse?: (response: unknown) => void) => void): void;
   logError(error: unknown): void;
 }
@@ -54,6 +69,13 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
   let cachedRules: Rule[] = [];
   let cachedSettings: Settings | null = null;
   let latestMatchResult: MatchResult | null = null;
+  const debouncedHandleDomChanged = deps.debounce(() => {
+    try {
+      handleDomChanged();
+    } catch (error) {
+      deps.logError(error);
+    }
+  }, 300);
 
   deps.addMessageListener((message, sendResponse) => {
     if (!isRuntimeMessage(message)) return;
@@ -78,6 +100,7 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
   cachedWorks = deps.parseAo3Works(deps.root);
   runMatchAndRender();
   syncHoverMenu();
+  startObserver();
 
   async function handleRulesUpdated(): Promise<void> {
     cachedRules = await deps.listRules();
@@ -92,6 +115,7 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     cachedSettings = await deps.getSettings();
 
     if (!cachedSettings.extensionEnabled) {
+      deps.stopPageObserver();
       deps.clearRenderedMatches(cachedWorks);
       deps.unmountHoverMenu();
       return;
@@ -101,10 +125,22 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     refreshWorks();
     runMatchAndRender();
     syncHoverMenu();
+    startObserver();
   }
 
   function refreshWorks(): void {
     cachedWorks = deps.parseAo3Works(deps.root);
+  }
+
+  function handleDomChanged(): void {
+    deps.clearRenderedMatches(cachedWorks);
+    refreshWorks();
+    runMatchAndRender();
+    syncHoverMenu();
+  }
+
+  function startObserver(): void {
+    deps.startPageObserver(debouncedHandleDomChanged);
   }
 
   function runMatchAndRender(): void {
@@ -147,7 +183,7 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
   }
 
   function getHitStats(): HitStats {
-    return deps.calculateHitStats(latestMatchResult, cachedRules.length);
+    return deps.calculateHitStats(latestMatchResult, cachedRules.length, cachedWorks);
   }
 }
 
@@ -163,6 +199,9 @@ function createRealDeps(): ContentAppDeps {
     mountHoverMenu: defaultMountHoverMenu,
     unmountHoverMenu: defaultUnmountHoverMenu,
     calculateHitStats: defaultCalculateHitStats,
+    startPageObserver: defaultStartPageObserver,
+    stopPageObserver: defaultStopPageObserver,
+    debounce: defaultDebounce,
     addMessageListener: (callback) => {
       const onMessage = getChrome().runtime?.onMessage;
       if (!onMessage) {

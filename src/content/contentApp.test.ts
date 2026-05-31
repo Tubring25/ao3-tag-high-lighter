@@ -4,7 +4,7 @@ import { startContentApp, type ContentAppDeps } from "./contentApp";
 
 describe("startContentApp", () => {
   it("registers the message listener but does not read rules or render when disabled", async () => {
-    const { deps, addMessageListener, listRules, parseAo3Works, renderMatches } = createDeps({
+    const { deps, addMessageListener, listRules, parseAo3Works, renderMatches, startPageObserver } = createDeps({
       getSettings: vi.fn(async () => createSettings({ extensionEnabled: false })),
     });
 
@@ -14,6 +14,7 @@ describe("startContentApp", () => {
     expect(listRules).not.toHaveBeenCalled();
     expect(parseAo3Works).not.toHaveBeenCalled();
     expect(renderMatches).not.toHaveBeenCalled();
+    expect(startPageObserver).not.toHaveBeenCalled();
   });
 
   it("parses but does not render when enabled with no rules", async () => {
@@ -48,6 +49,14 @@ describe("startContentApp", () => {
 
     expect(matchRules).toHaveBeenCalledWith([work], [rule]);
     expect(renderMatches).toHaveBeenCalledWith([work], matchResult, { hideWorkMode: "hide" });
+  });
+
+  it("starts the page observer after enabled initialization", async () => {
+    const { deps, startPageObserver } = createDeps();
+
+    await startContentApp(deps);
+
+    expect(startPageObserver).toHaveBeenCalledWith(expect.any(Function));
   });
 
   it("mounts the hover menu when hover is enabled", async () => {
@@ -147,7 +156,6 @@ describe("startContentApp", () => {
     expect(sendResponse).toHaveBeenCalledWith({
       highlight: 1,
       warn: 1,
-      mute: 0,
       hideWork: 0,
       totalRules: 1,
     });
@@ -167,7 +175,6 @@ describe("startContentApp", () => {
     expect(sendResponse).toHaveBeenCalledWith({
       highlight: 0,
       warn: 0,
-      mute: 0,
       hideWork: 0,
       totalRules: 0,
     });
@@ -184,7 +191,7 @@ describe("startContentApp", () => {
       .mockReturnValueOnce(createMatchResult())
       .mockReturnValueOnce(
         createMatchResult({
-          tagMatches: [{ tagId: "tag-1", ruleId: "rule-2", action: "mute" }],
+          tagMatches: [{ tagId: "tag-1", ruleId: "rule-2", action: "highlight" }],
         })
       );
     const { deps, listRules } = createDeps({
@@ -201,9 +208,8 @@ describe("startContentApp", () => {
     listenerRef.listener?.({ type: "GET_HIT_STATS" }, sendResponse);
 
     expect(sendResponse).toHaveBeenCalledWith({
-      highlight: 0,
+      highlight: 1,
       warn: 0,
-      mute: 1,
       hideWork: 0,
       totalRules: 2,
     });
@@ -258,7 +264,7 @@ describe("startContentApp", () => {
   it("clears rendering when SETTINGS_UPDATED disables the extension", async () => {
     const work = createWork();
     const listenerRef = createListenerRef();
-    const { deps, clearRenderedMatches, getSettings } = createDeps({
+    const { deps, clearRenderedMatches, getSettings, stopPageObserver } = createDeps({
       parseAo3Works: vi.fn(() => [work]),
       addMessageListener: listenerRef.addMessageListener,
     });
@@ -271,13 +277,14 @@ describe("startContentApp", () => {
     await flushAsyncHandlers();
 
     expect(clearRenderedMatches).toHaveBeenCalledWith([work]);
+    expect(stopPageObserver).toHaveBeenCalledTimes(1);
   });
 
   it("re-parses and renders when SETTINGS_UPDATED re-enables after disabled startup", async () => {
     const work = createWork();
     const rule = createRule();
     const listenerRef = createListenerRef();
-    const { deps, getSettings, listRules, parseAo3Works, renderMatches } = createDeps({
+    const { deps, getSettings, listRules, parseAo3Works, renderMatches, startPageObserver } = createDeps({
       getSettings: vi.fn(async () => createSettings({ extensionEnabled: false })),
       listRules: vi.fn(async () => [rule]),
       parseAo3Works: vi.fn(() => [work]),
@@ -294,6 +301,44 @@ describe("startContentApp", () => {
     expect(listRules).toHaveBeenCalledTimes(1);
     expect(parseAo3Works).toHaveBeenCalledWith(document);
     expect(renderMatches).toHaveBeenCalledTimes(1);
+    expect(startPageObserver).toHaveBeenCalledTimes(1);
+  });
+
+  it("debounces DOM change handling and rerenders with reparsed works", async () => {
+    const oldWork = createWork({ id: "old-work" });
+    const newWork = createWork({ id: "new-work" });
+    const listenerRef = createObserverRef();
+    const { deps, parseAo3Works, clearRenderedMatches, renderMatches, debounce } = createDeps({
+      parseAo3Works: vi.fn().mockReturnValueOnce([oldWork]).mockReturnValueOnce([newWork]),
+      startPageObserver: listenerRef.startPageObserver,
+      debounce: vi.fn((fn: () => void) => fn),
+    });
+
+    await startContentApp(deps);
+    listenerRef.listener?.();
+
+    expect(debounce).toHaveBeenCalledWith(expect.any(Function), 300);
+    expect(clearRenderedMatches).toHaveBeenCalledWith([oldWork]);
+    expect(parseAo3Works).toHaveBeenCalledTimes(2);
+    expect(renderMatches).toHaveBeenLastCalledWith([newWork], expect.any(Object), {
+      hideWorkMode: "collapse",
+    });
+  });
+
+  it("logs observer callback errors instead of throwing", async () => {
+    const listenerRef = createObserverRef();
+    const { deps, parseAo3Works, logError } = createDeps({
+      parseAo3Works: vi.fn(() => [createWork()]),
+      startPageObserver: listenerRef.startPageObserver,
+      debounce: vi.fn((fn: () => void) => fn),
+    });
+    parseAo3Works.mockReturnValueOnce([createWork()]).mockImplementationOnce(() => {
+      throw new Error("Parse failed");
+    });
+
+    await startContentApp(deps);
+    expect(() => listenerRef.listener?.()).not.toThrow();
+    expect(logError).toHaveBeenCalledWith(expect.any(Error));
   });
 
   it("skips rendering when parser returns no works", async () => {
@@ -321,6 +366,9 @@ function createDeps(overrides: Partial<ContentAppDeps> = {}) {
   const mountHoverMenu = vi.fn();
   const unmountHoverMenu = vi.fn();
   const calculateStats = vi.fn(calculateHitStats);
+  const startPageObserver = vi.fn();
+  const stopPageObserver = vi.fn();
+  const debounce = vi.fn(<T extends (...args: unknown[]) => void>(fn: T) => fn);
 
   const deps: ContentAppDeps = {
     root: document,
@@ -335,6 +383,9 @@ function createDeps(overrides: Partial<ContentAppDeps> = {}) {
     mountHoverMenu,
     unmountHoverMenu,
     calculateHitStats: calculateStats,
+    startPageObserver,
+    stopPageObserver,
+    debounce,
     ...overrides,
   };
 
@@ -350,6 +401,9 @@ function createDeps(overrides: Partial<ContentAppDeps> = {}) {
     logError: deps.logError as typeof logError,
     mountHoverMenu: deps.mountHoverMenu as typeof mountHoverMenu,
     unmountHoverMenu: deps.unmountHoverMenu as typeof unmountHoverMenu,
+    startPageObserver: deps.startPageObserver as typeof startPageObserver,
+    stopPageObserver: deps.stopPageObserver as typeof stopPageObserver,
+    debounce: deps.debounce as typeof debounce,
   };
 }
 
@@ -367,6 +421,20 @@ function createListenerRef() {
       return listener;
     },
     addMessageListener,
+  };
+}
+
+function createObserverRef() {
+  let listener: (() => void) | null = null;
+  const startPageObserver = vi.fn((callback: () => void) => {
+    listener = callback;
+  });
+
+  return {
+    get listener() {
+      return listener;
+    },
+    startPageObserver,
   };
 }
 
