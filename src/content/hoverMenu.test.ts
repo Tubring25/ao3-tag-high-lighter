@@ -36,11 +36,49 @@ describe("hoverMenu", () => {
     getShadowButton()?.click();
 
     expect(getShadowMenu()?.hidden).toBe(false);
-    expect(getMenuOptions().map((option) => option.textContent)).toEqual([
-      "Highlight",
-      "Warn",
-      "Hide work",
+    expect(getShadowButton()?.dataset.ao3thActive).toBe("true");
+    expect(getShadowButton()?.getAttribute("aria-expanded")).toBe("true");
+    expect(getMenuOptionLabels()).toEqual([
+      "Highlight tag",
+      "Warn work",
+      "Collapse work",
     ]);
+  });
+
+  it("shows the selected tag context in the action menu", () => {
+    const work = createWork();
+
+    mountHoverMenu([work], createSettings(), createOptions());
+    work.tags[0].element.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    getShadowButton()?.click();
+
+    expect(getShadowRoot()?.querySelector("[data-ao3th-menu-title]")?.textContent).toBe(
+      "Add rule for “Slow Burn”"
+    );
+  });
+
+  it("marks the hovered tag so content CSS can show the inline hover state", () => {
+    const work = createWork();
+
+    mountHoverMenu([work], createSettings(), createOptions());
+    work.tags[0].element.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+
+    expect(work.tags[0].element.dataset.ao3thHovered).toBe("true");
+  });
+
+  it("hides the menu when Escape is pressed", () => {
+    const work = createWork();
+
+    mountHoverMenu([work], createSettings(), createOptions());
+    work.tags[0].element.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    getShadowButton()?.click();
+
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+
+    expect(getShadowButton()?.hidden).toBe(true);
+    expect(getShadowButton()?.dataset.ao3thActive).toBe("false");
+    expect(getShadowButton()?.getAttribute("aria-expanded")).toBe("false");
+    expect(getShadowMenu()?.hidden).toBe(true);
   });
 
   it("creates a quick-add rule with the selected action", async () => {
@@ -164,6 +202,10 @@ function getMenuOptions(): HTMLButtonElement[] {
   return Array.from(
     getShadowRoot()?.querySelectorAll<HTMLButtonElement>("[data-ao3th-menu-option]") ?? []
   );
+}
+
+function getMenuOptionLabels(): string[] {
+  return getMenuOptions().map((option) => option.textContent ?? "");
 }
 
 async function flushAsyncHandlers(): Promise<void> {

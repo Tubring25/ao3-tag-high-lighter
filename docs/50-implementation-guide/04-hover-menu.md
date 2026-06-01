@@ -17,9 +17,9 @@
 
 ```
 鼠标悬停 tag
-  → tag 旁边出现一个共享的 [+] 按钮
-  → 点击按钮弹出 action 菜单
-  → 用户选择 Highlight / Warn / Mute / Hide work
+  → tag 进入 Search Block Hover State（只加浅蓝灰背景，不加 padding）并在旁边出现红底白字 [+] 按钮
+  → 点击按钮在 tag 下方弹出 block-local quick-add 菜单
+  → 用户选择 Highlight tag / Warn work / Collapse work
   → 创建 quickAdd 规则
   → contentApp 重新读取 rules 并即时重渲染当前页
   → 按 settings.showToast 显示 Toast
@@ -65,9 +65,11 @@ export function unmountHoverMenu(): void;
 - Shadow DOM 隔离按钮和菜单样式，避免 AO3 页面 CSS 互相污染。
 - 全局复用一个 Shadow host、一个 hover button、一个 menu，而不是给每个 tag 创建 DOM。
 - 每次 `mountHoverMenu()` 会先 `unmountHoverMenu()`，避免重复事件监听。
-- `mouseenter` tag 时记录 `currentTag` 并定位按钮；按钮/menu 有短延迟隐藏，方便鼠标移入。
+- `mouseenter` tag 时记录 `currentTag`、给 tag 临时加 `data-ao3th-hovered="true"`，并定位 18px 红底 `+` 按钮。tag hover 样式不得增加 padding，避免破坏 AO3 原页面布局。
+- `+` 按钮未选中时使用 80% opacity；菜单打开后设置为选中态 100% opacity，不额外增加 padding 或浅红色边框。
 - 菜单点击后调用 `addRule()`，成功后调用 `onRuleCreated()`。
-- 页面滚动或点击外部时隐藏按钮和菜单。
+- 菜单标题使用 `Add rule for “<tag>”`，下方三项选择使用设计稿中的纯文本 block 样式。
+- 页面滚动、点击外部或按 Escape 时隐藏按钮和菜单。
 
 ## contentApp 串联
 
@@ -92,6 +94,6 @@ function syncHoverMenu(): void {
 ## 当前不做
 
 - 不检测重复规则，MVP 允许重复 quick-add；后续可在 options 管理。
-- 不在菜单里显示命中原因或已有规则详情。
+- 不在菜单里显示命中原因、已有规则详情或额外说明文案。
 - 不实现移动端 tap / long press。
 - 不做 MutationObserver 下的新 tag 自动挂载；这留给稳定性阶段。

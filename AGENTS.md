@@ -2,7 +2,7 @@
 
 ## Project
 
-AO3 Tag Highlighter — a Chrome extension (Manifest V3) for AO3 tag-based highlighting, warning, muting, and work collapsing. Desktop Chrome only.
+AO3 Tag Highlighter — a Chrome extension (Manifest V3) for AO3 tag-based highlighting, warning, and work collapsing. Desktop Chrome only.
 
 ## Current Phase
 
@@ -24,7 +24,7 @@ Next: content script entry wiring, background message forwarding, page interacti
 - AO3 listing pages + single work page tag recognition
 - Tag categories: relationship / character / freeform
 - Match modes: exact / contains / wildcard
-- Rule actions: highlight / warn / mute / hideWork
+- Rule actions: highlight / warn / hideWork
 - Page-level hover button → quick-add rule menu
 - Popup: current page hit summary + global toggle
 - Options page: full rule CRUD + enable/disable
@@ -111,6 +111,7 @@ All commands are functional. Tests use Vitest with jsdom environment.
 - Do not create duplicate planning files at the repo root.
 - Prefer updating existing files over creating new ones.
 - When writing code, follow the directory structure above; do not invent new top-level directories without an ADR.
+- UI design / implementation must not use gradient backgrounds; use solid fills, borders, spacing, and typography instead.
 
 ## Definition of Done
 
