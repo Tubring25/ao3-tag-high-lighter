@@ -60,7 +60,7 @@
 
 - `npm run build` 通过
 - `npm run lint` 通过
-- `npm run test` 全部 PASS（125/125）
+- `npm run test` 全部 PASS（126/126）
 
 ## 2026-05-30 补充
 
@@ -123,11 +123,107 @@
 - `src/content/hoverMenu.test.ts`：补充 icon active / aria-expanded 状态断言。
 - 已跑验证：`npm run build`、`npm run lint`、`npm run test` 全部通过（125/125）。
 
+## 2026-06-01 Screen 2 — Extension Popup 实现
+
+- 已先提交上一阶段 Quick Add Menu 变更：`80a894f Refine quick add hover menu UI`。
+- 已读取 Pencil `Screen 2 — Extension Popup`：390px popup mock、品牌 header + 全局 toggle、page status notice、Highlight/Warn/Collapsed works stats、Manage rules primary action、Turn off hover button secondary action、Local only/MVP footer。
+- `src/popup/popupApp.ts`：重构 popup DOM 结构，对齐 Screen 2；新增 page status notice、footer、secondary hover button toggle，并保留 `GET_HIT_STATS` 和全局 `extensionEnabled` 设置流程。
+- `src/popup/popup.css`：重写 popup 样式为纯色 AO3-adjacent 视觉，无渐变背景。
+- `src/popup/popupApp.test.ts`：更新统计断言，并新增 hover button setting toggle 测试。
+- 已跑验证：`npm run build`、`npm run lint`、`npm run test` 全部通过（126/126）。
+
+## 2026-06-01 Screen 2 Popup 细节微调
+
+- `src/popup/popup.css`：移除 popup body/shell/notice/default row 的非必要背景色，保留功能性红色 primary button、toggle 和 action stat 色块。
+- `src/popup/popup.css`：右上角全局开关改为 knob transform，并为 track background / knob transform 增加 160ms 过渡。
+- `src/popup/popupApp.ts`：移除 footer meta（Local only / MVP / rules count）。
+- `src/popup/popupApp.ts`：将原 `Turn off hover button` secondary button 改为 `Tag hover quick-add` 设置行，附说明文案和独立 toggle，更直观表达控制对象。
+- `src/popup/popupApp.test.ts`：更新 footer 移除断言和 hover quick-add toggle 测试。
+- 已跑验证：`npm run build`、`npm run lint`、`npm run test` 全部通过（126/126）。
+
+## 2026-06-01 Impeccable Design Review
+
+- 已检查本机 skills：没有独立名为 `impeccable` 的 skill；官方 curated / experimental skills 列表中也没有可安装的 `impeccable`。
+- 已确认当前安装了 Impeccable 相关设计技能：`teach-impeccable`、`critique`、`audit`、`polish`、`frontend-design` 等；本轮按 `critique` 用法（先参考 `frontend-design` 原则）执行设计 review。
+- Review 覆盖：Pencil `Screen 2 — Extension Popup` 截图与当前实现的 `src/popup/popupApp.ts` / `src/popup/popup.css`。
+- 已跑验证：`npm run build`、`npm run test` 全部通过（126/126）。
+
+## 2026-06-01 Impeccable 可用性确认
+
+- 项目内已安装 `.claude/skills/impeccable`，`SKILL.md` 标注版本 v3.5.0，并包含 `reference/` 与 `scripts/`。
+- `npx impeccable --help` 可执行，`npx impeccable --version` 输出 v2.3.2。
+- `node .claude/skills/impeccable/scripts/context.mjs` 当前输出 `NO_PRODUCT_MD`，因此正式执行 `/impeccable critique/audit/polish/...` 前需先按 `reference/init.md` 生成根目录 `PRODUCT.md`；之后可继续生成 `DESIGN.md` 和 live config。
+- 已跑验证：`npm run build`、`npm run test` 全部通过（126/126）。
+
+## 2026-06-01 Impeccable Init
+
+- 已按 Impeccable init flow 生成本地上下文文件：`PRODUCT.md`、`DESIGN.md`、`.impeccable/design.json`、`.impeccable/live/config.json`。
+- 已将 `PRODUCT.md`、`DESIGN.md`、`.impeccable/`、`.claude/skills/` 写入本地 `.git/info/exclude`，这些文件不会进入 Git status，也不应提交。
+- `PRODUCT.md` register 为 `product`；核心原则：保留 AO3 context、清晰区分 highlight / warn / collapse、低成本 quick-add、本地可信、无渐变背景。
+- `DESIGN.md` 记录当前视觉系统：Archive Red、warm archive neutrals、functional tag tints、flat-by-default surfaces、popup/options/quick-add components。
+- `.impeccable/live/config.json` 覆盖 `popup.html` 和 `options.html`，CSP check 已完成，`cspChecked: true`。
+- `node .claude/skills/impeccable/scripts/context-signals.mjs` 已能识别 `hasProduct: true`、`hasDesign: true`、`register: product`。
+- `npx impeccable detect src/popup src/options src/styles --json` 返回 `[]`。
+- 已跑验证：`npm run build`、`npm run test` 全部通过（126/126）。
+
+## 2026-06-02 Popup Design Re-review
+
+- 使用 Impeccable `critique` 流程重新 review `src/popup/popupApp.ts` 和 `src/popup/popup.css`。
+- `npx impeccable detect src/popup --json` 返回 `[]`；未发现静态 detector anti-pattern。
+- 设计健康分：29/40。当前 popup 方向整体成立：archive-adjacent、无渐变、结构清楚、hover quick-add 设置行比旧 secondary button 更直观。
+- 优先设计问题：
+  1. 全局开关和 hover quick-add 开关保存为异步操作，但成功/失败没有用户可见反馈。
+  2. 右上全局开关只有 `aria-label`，对视觉用户缺少 `On / Paused` 等明确语义。
+  3. paused、stats unavailable、0 matches 三种状态可以进一步拉开层级，避免用户误判插件是否正在工作。
+  4. `Collapsed works` 是最高优先级 action，但在 stats 中视觉权重偏弱。
+  5. 小清理：合并重复 `.popup-page-label` CSS；重新评估 `min-height: 560px` 在 no-stats 状态下是否过高。
+- 本地 critique snapshot 已写入 `.impeccable/critique/`；该目录被 `.git/info/exclude` 忽略，不提交。
+- 已跑验证：`npm run build`、`npm run lint`、`npm run test` 全部通过（126/126）。
+
+## 2026-06-02 Popup Review Fixes
+
+- `src/popup/popupApp.ts`：全局开关和 `Tag hover quick-add` 开关统一走可见保存反馈流程，显示 `Saving...` / `Saved` / `Could not save. Try again.`；保存失败时回滚 toggle 并调用 `logError`。
+- `src/popup/popupApp.ts`：右上角全局开关增加视觉可见 `On` / `Paused` 状态；全局开关保存成功后同步更新 page status notice。
+- `src/popup/popupApp.ts`：page status notice 区分 `unavailable` / `paused` / `empty` / `active` 四类状态；0 命中时显示 `No rule matches on this page yet.`。
+- `src/popup/popup.css`：为 notice mode 增加边框/标题状态差异；为 `Collapsed works` stats 增加灰底与 leading marker；合并重复 `.popup-page-label`，将 shell `min-height` 从 560px 调整为 520px。
+- `src/popup/popupApp.test.ts`：新增全局开关保存反馈、失败回滚、zero-match notice、hover quick-add 保存反馈断言；popup 测试增至 9 条。
+- 设计文件同步：本地 `DESIGN.md` 和 `.impeccable/design.json` 已记录 popup switch 状态反馈、notice modes、collapsed works stats 规则；这些文件仍被 `.git/info/exclude` 忽略，不提交。
+- 文档同步：`docs/50-implementation-guide/05-popup.md` 更新当前行为；`decisions.md` 新增 D013。
+- `npx impeccable detect src/popup --json` 返回 `[]`。
+- 已跑验证：`npm run build`、`npm run lint`、`npm run test` 全部通过（128/128）。
+
+## 2026-06-02 Pencil Popup 同步
+
+- 已更新 Pencil `Screen 2 — Extension Popup` 中的 `Chrome Popup Mock`，使其与当前实现一致：
+  - popup mock 使用纯白/无渐变背景，尺寸改为 390 × 520；
+  - 右上全局开关显示 `On` 和 `Saved` 状态；
+  - 移除底部 `Local only` / `MVP` footer meta；
+  - `Turn off hover button` 替换为 `Tag hover quick-add` 设置行，含说明、`On`、`Saved` 和 toggle；
+  - `Collapsed works` stats 改为灰底，并增加 leading marker。
+- 已更新 Pencil `Popup Notes`，记录保存反馈、notice 四态、footer meta 移除和 collapsed works 权重决策。
+- `snapshot_layout` 检查 `Screen 2 — Extension Popup` 无 layout problems；已截图确认无明显折叠/溢出。
+- 已跑验证：`npm run build`、`npm run test` 全部通过（128/128）。
+
+## 2026-06-02 Saved/Outline 反馈修正
+
+- `src/popup/popupApp.ts`：保存成功后不再显示 `Saved`，改为清空保存反馈；仍保留 `Saving...` 和 `Could not save. Try again.`，失败继续回滚 toggle。
+- `src/popup/popup.css`：移除 switch 和 button focus/hover 的外扩 `outline`，改用 track / button 背景色加深或变浅表达状态。
+- `src/content/hoverMenu.ts`：移除 quick-add menu option focus/hover 外扩 outline，改用选项自身背景/边框颜色深浅变化；hover icon 继续用 opacity 表达状态。
+- `src/popup/popupApp.test.ts`：更新断言，确认保存成功后反馈文本为空。
+- `AGENTS.md`：新增长期规则，后续 hover/focus 状态不在组件外加 outline 边框，统一用颜色深浅、透明度或组件内部色块变化。
+- `decisions.md`：新增 D014 记录 hover/focus 状态不用组件外 outline。
+- 本地设计文件 `DESIGN.md` / `.impeccable/design.json` 已同步：不保留 `Saved`、hover/focus 不用外扩 outline。
+- Pencil `Screen 2 — Extension Popup` 已同步：移除 `Saved` 文案；Popup Notes 改为 `Saving / failed feedback`，并记录 hover/focus 使用颜色深浅/透明度而非外扩 outline。
+- Pencil `snapshot_layout` 检查无 layout problems；已截图确认无明显折叠/溢出。
+- 已跑验证：`npm run build`、`npm run lint`、`npm run test` 全部通过（128/128）。
+
 ## 下一步
 
 1. 补稳定性 I2/I4：折叠占位条增强、清理旧样式增强
-2. 浏览器手动 QA：加载 `dist/`，验证 AO3 页面 quick-add、popup、options 全链路
-3. 如进入 UI 实现微调：优先对照 Pencil `AO3 Article Block Designs — Search + Detail` 中的实际 block 同步 `src/styles/content.css`，再参考 popup/options 设计同步 `src/popup/popup.css`、`src/options/options.css`
+2. 如继续 popup polish：建议做浏览器/Chrome extension 手动 QA，重点看保存反馈在 390px 宽度下的换行、error 文案和 no-stats/zero-match/paused 三种 notice。
+3. 如需使用 Impeccable：可直接运行 `npx impeccable detect ...`，或按 skill 流程运行 `critique` / `audit` / `polish`，但不要提交本地 Impeccable context 文件。
+4. 浏览器手动 QA：加载 `dist/`，验证 AO3 页面 quick-add、popup、options 全链路
+5. 如进入 UI 实现微调：优先对照 Pencil `AO3 Article Block Designs — Search + Detail` 中的实际 block 同步 `src/styles/content.css`，再参考 popup/options 设计同步 `src/popup/popup.css`、`src/options/options.css`
 
 ## 先读什么
 

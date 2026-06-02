@@ -69,3 +69,21 @@
 **日期：** 2026-06-01
 **决策：** 后续所有 UI 设计稿和代码实现都不使用渐变背景（包括 `linear-gradient`、`radial-gradient`、`conic-gradient`）。需要层次时优先使用纯色填充、边框、阴影、留白、字号和字重。
 **理由：** 当前产品视觉方向是 AO3-adjacent、克制、低干扰；渐变背景会增加装饰感并降低与 AO3 原站的融合度。统一禁用可减少后续返工。
+
+## D012 — Popup 采用 Screen 2 的状态优先结构
+
+**日期：** 2026-06-01
+**决策：** Popup 对齐 Pencil `Screen 2 — Extension Popup`，但移除底部 meta 和整体背景色：顶部品牌 + 全局 toggle，随后展示当前页状态 notice，再展示 Highlight / Warn / Collapsed works 三项统计；primary action 只保留 `Manage rules`，hover button 控制改为带说明的 `Tag hover quick-add` 开关行。
+**理由：** Popup 的核心用途是快速确认当前页命中和全局启停状态。将状态 notice 放在统计前可先解释页面是否正在生效；三项统计与规则 action 视觉效果一一对应。移除 footer meta 可降低信息噪音；hover quick-add 以 labeled switch 呈现比“Turn off hover button”按钮更直观。
+
+## D013 — Popup 设置操作必须有可见保存反馈
+
+**日期：** 2026-06-02
+**决策：** Popup 内全局启停和 `Tag hover quick-add` 两个设置开关都显示异步保存反馈：保存中、保存失败；成功后不保留 `Saved` 文案，失败时回滚 toggle 状态并保留错误文案。右上全局开关增加视觉可见的 `On` / `Paused` 状态，notice 区分 unavailable / paused / empty / active 四类状态，`Collapsed works` stats 用克制灰底和 marker 强调其最高优先级。
+**理由：** Popup 是用户判断插件是否正在影响 AO3 页面的高信任入口。裸开关和 console-only 错误无法给用户足够确认，尤其是 warn / hideWork 场景。可见状态与保存反馈能降低误判，同时保持当前 archive-adjacent、无渐变、低装饰方向。
+
+## D014 — Hover / Focus 状态不用组件外 outline
+
+**日期：** 2026-06-02
+**决策：** 后续所有 UI 设计和实现中，hover / focus 状态不再在组件外增加 outline 边框；统一使用颜色深浅、透明度或组件内部色块变化来区分状态。键盘 focus 仍需可见，但不能依赖组件外扩描边。
+**理由：** 外扩 outline 会破坏当前 AO3-adjacent 的克制视觉，也容易在紧凑 popup 和 AO3 inline tag 场景里显得突兀。颜色深浅变化能保持布局稳定，并与已确定的 quick-add icon opacity 状态规则一致。

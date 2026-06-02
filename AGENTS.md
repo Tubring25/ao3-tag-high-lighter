@@ -112,6 +112,7 @@ All commands are functional. Tests use Vitest with jsdom environment.
 - Prefer updating existing files over creating new ones.
 - When writing code, follow the directory structure above; do not invent new top-level directories without an ADR.
 - UI design / implementation must not use gradient backgrounds; use solid fills, borders, spacing, and typography instead.
+- Hover / focus states must not add outer outline borders around components; distinguish states with controlled color, opacity, or tonal changes instead.
 
 ## Definition of Done
 

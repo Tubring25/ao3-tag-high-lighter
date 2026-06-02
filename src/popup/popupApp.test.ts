@@ -9,9 +9,10 @@ describe("renderPopupApp", () => {
     await renderPopupApp(container, createDeps({ getSettings: vi.fn(async () => createSettings({ extensionEnabled: false })) }));
 
     expect(container.querySelector<HTMLInputElement>("[data-popup-toggle]")?.checked).toBe(false);
+    expect(container.querySelector("[data-popup-global-status]")?.textContent).toBe("Paused");
   });
 
-  it("saves settings when the global toggle changes", async () => {
+  it("saves settings and shows feedback when the global toggle changes", async () => {
     const container = document.createElement("div");
     const saveSettings = vi.fn(async (patch: Partial<Settings>) => createSettings(patch));
 
@@ -21,9 +22,36 @@ describe("renderPopupApp", () => {
 
     toggle.checked = false;
     toggle.dispatchEvent(new Event("change"));
+    expect(container.querySelector("[data-popup-global-save-status]")?.textContent).toBe("Saving...");
     await flushAsyncHandlers();
 
     expect(saveSettings).toHaveBeenCalledWith({ extensionEnabled: false });
+    expect(container.querySelector("[data-popup-global-status]")?.textContent).toBe("Paused");
+    expect(container.querySelector("[data-popup-global-save-status]")?.textContent).toBe("");
+    expect(container.textContent).toContain("Extension paused");
+    expect(container.querySelector("[data-popup-notice]")?.getAttribute("data-notice")).toBe("paused");
+    expect(toggle.disabled).toBe(false);
+  });
+
+  it("reverts the global toggle and reports save failure", async () => {
+    const container = document.createElement("div");
+    const logError = vi.fn();
+    const saveSettings = vi.fn(async () => {
+      throw new Error("storage failed");
+    });
+
+    await renderPopupApp(container, createDeps({ logError, saveSettings }));
+    const toggle = container.querySelector<HTMLInputElement>("[data-popup-toggle]");
+    if (!toggle) throw new Error("Toggle was not rendered");
+
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event("change"));
+    await flushAsyncHandlers();
+
+    expect(toggle.checked).toBe(true);
+    expect(container.querySelector("[data-popup-global-status]")?.textContent).toBe("On");
+    expect(container.querySelector("[data-popup-global-save-status]")?.textContent).toBe("Could not save. Try again.");
+    expect(logError).toHaveBeenCalledTimes(1);
   });
 
   it("renders stats returned from the active tab", async () => {
@@ -36,9 +64,26 @@ describe("renderPopupApp", () => {
       })
     );
 
-    expect(container.textContent).toContain("2 tags");
-    expect(container.textContent).toContain("1 works");
-    expect(container.textContent).toContain("7 rules");
+    expect(container.textContent).toContain("4 tag matches on this page");
+    expect(container.textContent).toContain("Highlight2");
+    expect(container.textContent).toContain("Warn1");
+    expect(container.textContent).toContain("Collapsed works1");
+    expect(container.textContent).not.toContain("Local only");
+    expect(container.textContent).not.toContain("MVP");
+  });
+
+  it("renders a distinct zero-match state", async () => {
+    const container = document.createElement("div");
+
+    await renderPopupApp(
+      container,
+      createDeps({
+        sendMessageToTab: vi.fn(async () => createHitStats({ highlight: 0, warn: 0, hideWork: 0, totalRules: 7 })),
+      })
+    );
+
+    expect(container.textContent).toContain("No rule matches on this page yet");
+    expect(container.querySelector(".popup-notice")?.getAttribute("data-notice")).toBe("empty");
   });
 
   it("shows a fallback when there is no active tab", async () => {
@@ -72,6 +117,28 @@ describe("renderPopupApp", () => {
     container.querySelector<HTMLButtonElement>("[data-popup-options]")?.click();
 
     expect(openOptionsPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("toggles the hover button setting from a labeled switch", async () => {
+    const container = document.createElement("div");
+    const saveSettings = vi.fn(async (patch: Partial<Settings>) => createSettings(patch));
+
+    await renderPopupApp(container, createDeps({ saveSettings }));
+    const toggle = container.querySelector<HTMLInputElement>("[data-popup-hover-toggle]");
+    if (!toggle) throw new Error("Hover button toggle was not rendered");
+
+    expect(container.textContent).toContain("Tag hover quick-add");
+    expect(container.textContent).toContain("Show the + button next to AO3 tags.");
+    expect(container.querySelector("[data-popup-hover-status]")?.textContent).toBe("On");
+    expect(toggle.checked).toBe(true);
+
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event("change"));
+    await flushAsyncHandlers();
+
+    expect(saveSettings).toHaveBeenCalledWith({ hoverButtonEnabled: false });
+    expect(container.querySelector("[data-popup-hover-status]")?.textContent).toBe("Off");
+    expect(container.querySelector("[data-popup-hover-save-status]")?.textContent).toBe("");
   });
 });
 

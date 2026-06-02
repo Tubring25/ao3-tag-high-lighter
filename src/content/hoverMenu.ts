@@ -176,7 +176,6 @@ function injectShadowStyles(root: ShadowRoot): void {
     [data-ao3th-hover-button]:hover,
     [data-ao3th-hover-button]:focus-visible {
       opacity: 1;
-      outline: none;
     }
 
     [data-ao3th-hover-button][data-ao3th-active="true"] {
@@ -237,8 +236,18 @@ function injectShadowStyles(root: ShadowRoot): void {
 
     [data-ao3th-menu-option]:hover,
     [data-ao3th-menu-option]:focus-visible {
-      outline: 2px solid rgba(153, 0, 0, 0.28);
-      outline-offset: 1px;
+      background: #f3f4f6;
+      border-color: #b8b0a7;
+    }
+
+    [data-action="highlight"]:hover,
+    [data-action="highlight"]:focus-visible {
+      background: #ffe9b5;
+    }
+
+    [data-action="warn"]:hover,
+    [data-action="warn"]:focus-visible {
+      background: #ead8d4;
     }
   `;
   root.appendChild(style);
