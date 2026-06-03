@@ -99,6 +99,30 @@ describe("renderMatches", () => {
 
     expect(work.element.dataset.ao3thWarn).toBe("true");
     expect(work.element.dataset.ao3thRuleIds).toBe("rule-warn");
+    expect(work.element.querySelector("[data-ao3th-warn-banner]")?.textContent).toBe(
+      "This work contains warning tags."
+    );
+  });
+
+  it("does not insert a listing warn banner on work detail pages", () => {
+    const work = createWork({ isWorkDetailPage: true });
+
+    renderMatches(
+      [work],
+      createMatchResult({
+        workSummaries: [
+          {
+            workId: "work-1",
+            matchedRuleIds: ["rule-warn"],
+            hasWarn: true,
+            hasHideWork: false,
+          },
+        ],
+      })
+    );
+
+    expect(work.element.dataset.ao3thWarn).toBe("true");
+    expect(work.element.querySelector("[data-ao3th-warn-banner]")).toBeNull();
   });
 
   it("collapses hideWork matches with a clickable placeholder by default", () => {
@@ -131,6 +155,43 @@ describe("renderMatches", () => {
 
     expect(work.element.dataset.ao3thExpanded).toBe("true");
     expect(placeholder?.textContent).toContain("Hide again");
+
+    placeholder?.click();
+
+    expect(work.element.dataset.ao3thExpanded).toBeUndefined();
+    expect(placeholder?.textContent).toContain("Click to expand");
+  });
+
+  it("toggles collapsed work without causing child-list mutations", async () => {
+    const work = createWork();
+
+    renderMatches(
+      [work],
+      createMatchResult({
+        workSummaries: [
+          {
+            workId: "work-1",
+            matchedRuleIds: ["rule-hide"],
+            hasWarn: false,
+            hasHideWork: true,
+          },
+        ],
+      })
+    );
+
+    const placeholder = work.element.querySelector<HTMLButtonElement>(
+      "[data-ao3th-collapse-placeholder]"
+    );
+    const observerCallback = vi.fn();
+    const observer = new MutationObserver(observerCallback);
+    observer.observe(work.element, { childList: true, subtree: true });
+
+    placeholder?.click();
+    await flushMutationObserver();
+
+    observer.disconnect();
+    expect(observerCallback).not.toHaveBeenCalled();
+    expect(work.element.dataset.ao3thExpanded).toBe("true");
   });
 
   it("does not collapse hideWork matches on work detail pages", () => {
@@ -196,6 +257,7 @@ describe("renderMatches", () => {
     expect(work.tags[0].element.dataset.ao3thRuleIds).toBeUndefined();
     expect(work.element.dataset.ao3thWarn).toBeUndefined();
     expect(work.element.dataset.ao3thHidden).toBeUndefined();
+    expect(work.element.querySelector("[data-ao3th-warn-banner]")).toBeNull();
     expect(work.element.querySelector("[data-ao3th-collapse-placeholder]")).toBeNull();
   });
 
@@ -224,3 +286,9 @@ describe("renderMatches", () => {
     ).toContain("Hide again");
   });
 });
+
+async function flushMutationObserver(): Promise<void> {
+  for (let i = 0; i < 3; i += 1) {
+    await Promise.resolve();
+  }
+}

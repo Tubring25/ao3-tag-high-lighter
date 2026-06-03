@@ -53,6 +53,19 @@ describe("pageObserver", () => {
     expect(callback).not.toHaveBeenCalled();
   });
 
+  it("ignores injected warn banners", async () => {
+    document.body.innerHTML = `<main id="main"></main>`;
+    const callback = vi.fn();
+
+    startPageObserver(callback);
+    const banner = document.createElement("div");
+    banner.dataset.ao3thWarnBanner = "true";
+    document.querySelector("#main")?.appendChild(banner);
+    await flushMutationObserver();
+
+    expect(callback).not.toHaveBeenCalled();
+  });
+
   it("stops observing after stopPageObserver", async () => {
     document.body.innerHTML = `<main id="main"></main>`;
     const callback = vi.fn();
