@@ -29,6 +29,44 @@ function createWork(overrides: Partial<ParsedWork> = {}): ParsedWork {
   };
 }
 
+function createDetailWork(tagTexts: readonly string[] = ["Slow Burn", "Major Character Death"]): ParsedWork {
+  document.body.innerHTML = `
+    <div id="workskin">
+      <dl class="work meta group">
+        <dd class="freeform tags">
+          <ul class="commas">
+            ${tagTexts
+              .map((tagText, index) => `<li><a id="detail-tag-${index}" class="tag">${tagText}</a></li>`)
+              .join("")}
+          </ul>
+        </dd>
+      </dl>
+      <div id="chapters">
+        <p id="article-copy">Original article content.</p>
+      </div>
+    </div>
+  `;
+
+  const workElement = document.querySelector<HTMLElement>("#workskin");
+  if (!workElement) throw new Error("Test DOM failed to initialize");
+
+  return {
+    id: "work-1",
+    element: workElement,
+    tags: tagTexts.map((tagText, index) => {
+      const tagElement = document.querySelector<HTMLElement>(`#detail-tag-${index}`);
+      if (!tagElement) throw new Error("Test DOM failed to initialize");
+      return createTag(
+        `detail-tag-${index}`,
+        tagText,
+        tagText.toLowerCase(),
+        tagElement
+      );
+    }),
+    isWorkDetailPage: true,
+  };
+}
+
 function createTag(id: string, text: string, normalizedText: string, element: HTMLElement): ParsedTag {
   return {
     id,
@@ -131,6 +169,7 @@ describe("renderMatches", () => {
     renderMatches(
       [work],
       createMatchResult({
+        tagMatches: [{ tagId: "tag-2", ruleId: "rule-hide", action: "hideWork" }],
         workSummaries: [
           {
             workId: "work-1",
@@ -149,7 +188,9 @@ describe("renderMatches", () => {
     expect(work.element.dataset.ao3thHidden).toBe("collapse");
     expect(work.element.dataset.ao3thExpanded).toBeUndefined();
     expect(placeholder).toBeInstanceOf(HTMLButtonElement);
-    expect(placeholder?.textContent).toContain("collapsed");
+    expect(placeholder?.textContent).toContain(
+      "This work is collapsed by a hideWork rule: Major Character Death"
+    );
 
     placeholder?.click();
 
@@ -160,6 +201,36 @@ describe("renderMatches", () => {
 
     expect(work.element.dataset.ao3thExpanded).toBeUndefined();
     expect(placeholder?.textContent).toContain("Click to expand");
+  });
+
+  it("lists every hideWork reason on collapsed works", () => {
+    const work = createWork();
+
+    renderMatches(
+      [work],
+      createMatchResult({
+        tagMatches: [
+          { tagId: "tag-1", ruleId: "rule-hide-1", action: "hideWork" },
+          { tagId: "tag-2", ruleId: "rule-hide-2", action: "hideWork" },
+        ],
+        workSummaries: [
+          {
+            workId: "work-1",
+            matchedRuleIds: ["rule-hide-1", "rule-hide-2"],
+            hasWarn: false,
+            hasHideWork: true,
+          },
+        ],
+      })
+    );
+
+    const placeholder = work.element.querySelector<HTMLButtonElement>(
+      "[data-ao3th-collapse-placeholder]"
+    );
+
+    expect(placeholder?.textContent).toContain(
+      "This work is collapsed by hideWork rules: Slow Burn, Major Character Death"
+    );
   });
 
   it("toggles collapsed work without causing child-list mutations", async () => {
@@ -216,7 +287,113 @@ describe("renderMatches", () => {
     expect(work.element.querySelector("[data-ao3th-collapse-placeholder]")).toBeNull();
   });
 
-  it("ignores hideWork tag priority on work detail pages", () => {
+  it("shows warning and caution bars inside detail page metadata without changing article content", () => {
+    const work = createDetailWork();
+
+    renderMatches(
+      [work],
+      createMatchResult({
+        tagMatches: [
+          { tagId: "detail-tag-0", ruleId: "rule-warn", action: "warn" },
+          { tagId: "detail-tag-1", ruleId: "rule-hide", action: "hideWork" },
+        ],
+        workSummaries: [
+          {
+            workId: "work-1",
+            matchedRuleIds: ["rule-warn", "rule-hide"],
+            hasWarn: true,
+            hasHideWork: true,
+          },
+        ],
+      })
+    );
+
+    const meta = work.element.querySelector("dl.work.meta");
+    const articleCopy = work.element.querySelector("#article-copy");
+
+    expect(meta?.querySelector("[data-ao3th-warn-banner]")?.textContent).toBe(
+      "This work contains warning tags: Slow Burn."
+    );
+    expect(meta?.querySelector("[data-ao3th-caution-banner]")?.textContent).toBe(
+      "Caution: This work matches tags you usually hide from listings: Major Character Death."
+    );
+    expect(work.tags[1].element.dataset.ao3thAction).toBe("hideWork");
+    expect(work.element.querySelector("[data-ao3th-collapse-placeholder]")).toBeNull();
+    expect(work.element.dataset.ao3thHidden).toBeUndefined();
+    expect(articleCopy?.textContent).toBe("Original article content.");
+    expect(articleCopy?.querySelector("[data-ao3th-warn-banner]")).toBeNull();
+    expect(articleCopy?.querySelector("[data-ao3th-caution-banner]")).toBeNull();
+  });
+
+  it("does not show a detail warning bar when five or more warning tags match", () => {
+    const work = createDetailWork(["One", "Two", "Three", "Four", "Five", "Major Character Death"]);
+
+    renderMatches(
+      [work],
+      createMatchResult({
+        tagMatches: [
+          { tagId: "detail-tag-0", ruleId: "rule-warn-1", action: "warn" },
+          { tagId: "detail-tag-1", ruleId: "rule-warn-2", action: "warn" },
+          { tagId: "detail-tag-2", ruleId: "rule-warn-3", action: "warn" },
+          { tagId: "detail-tag-3", ruleId: "rule-warn-4", action: "warn" },
+          { tagId: "detail-tag-4", ruleId: "rule-warn-5", action: "warn" },
+          { tagId: "detail-tag-5", ruleId: "rule-hide", action: "hideWork" },
+        ],
+        workSummaries: [
+          {
+            workId: "work-1",
+            matchedRuleIds: [
+              "rule-warn-1",
+              "rule-warn-2",
+              "rule-warn-3",
+              "rule-warn-4",
+              "rule-warn-5",
+              "rule-hide",
+            ],
+            hasWarn: true,
+            hasHideWork: true,
+          },
+        ],
+      })
+    );
+
+    const meta = work.element.querySelector("dl.work.meta");
+
+    expect(meta?.querySelector("[data-ao3th-warn-banner]")).toBeNull();
+    expect(meta?.querySelector("[data-ao3th-caution-banner]")?.textContent).toBe(
+      "Caution: This work matches tags you usually hide from listings: Major Character Death."
+    );
+  });
+
+  it("clears detail page metadata bars before re-rendering", () => {
+    const work = createDetailWork();
+
+    renderMatches(
+      [work],
+      createMatchResult({
+        tagMatches: [
+          { tagId: "detail-tag-0", ruleId: "rule-warn", action: "warn" },
+          { tagId: "detail-tag-1", ruleId: "rule-hide", action: "hideWork" },
+        ],
+        workSummaries: [
+          {
+            workId: "work-1",
+            matchedRuleIds: ["rule-warn", "rule-hide"],
+            hasWarn: true,
+            hasHideWork: true,
+          },
+        ],
+      })
+    );
+
+    renderMatches([work], createMatchResult({}));
+
+    const meta = work.element.querySelector("dl.work.meta");
+    expect(meta?.querySelector("[data-ao3th-warn-banner]")).toBeNull();
+    expect(meta?.querySelector("[data-ao3th-caution-banner]")).toBeNull();
+  });
+
+  it("keeps hideWork tag background on work detail pages", () => {
     const work = createWork({ isWorkDetailPage: true });
 
     renderMatches(
@@ -229,7 +406,7 @@ describe("renderMatches", () => {
       })
     );
 
-    expect(work.tags[0].element.dataset.ao3thAction).toBe("highlight");
+    expect(work.tags[0].element.dataset.ao3thAction).toBe("hideWork");
     expect(work.tags[0].element.dataset.ao3thRuleIds).toBe("rule-highlight,rule-hide");
   });
 

@@ -11,6 +11,11 @@ interface TagRenderState {
   ruleIds: string[];
 }
 
+interface MatchedTagTextsByAction {
+  hideWork: Map<string, string[]>;
+  warn: Map<string, string[]>;
+}
+
 export function renderMatches(
   works: readonly ParsedWork[],
   matchResult: MatchResult,
@@ -33,15 +38,13 @@ export function renderMatches(
 
   const tagsById = mapTagsById(works);
   const tagStates = groupTagMatches(matchResult.tagMatches);
+  const matchedTagTexts = mapMatchedTagTextsByAction(matchResult.tagMatches, tagsById);
 
   for (const [tagId, state] of tagStates) {
     const item = tagsById.get(tagId);
     if (!item) continue;
 
-    const effectiveActions = item.work.isWorkDetailPage
-      ? state.actions.filter((action) => action !== "hideWork")
-      : state.actions;
-    const action = resolveHighestPriorityAction(effectiveActions);
+    const action = resolveHighestPriorityAction(state.actions);
     if (!action) continue;
 
     item.tag.element.dataset.ao3thAction = action;
@@ -53,7 +56,11 @@ export function renderMatches(
     const work = worksById.get(summary.workId);
     if (!work) continue;
 
-    applyWorkEffects(work, summary, { hideWorkMode });
+    applyWorkEffects(work, summary, {
+      hideWorkMode,
+      collapseReasons: matchedTagTexts.hideWork.get(summary.workId) ?? [],
+      warningReasons: matchedTagTexts.warn.get(summary.workId) ?? [],
+    });
   }
 }
 
@@ -100,4 +107,28 @@ function groupTagMatches(matches: readonly TagMatch[]) {
   }
 
   return states;
+}
+
+function mapMatchedTagTextsByAction(
+  matches: readonly TagMatch[],
+  tagsById: Map<string, { tag: ParsedWork["tags"][number]; work: ParsedWork }>
+): MatchedTagTextsByAction {
+  const textsByAction: MatchedTagTextsByAction = {
+    hideWork: new Map<string, string[]>(),
+    warn: new Map<string, string[]>(),
+  };
+
+  for (const match of matches) {
+    if (match.action !== "hideWork" && match.action !== "warn") continue;
+
+    const item = tagsById.get(match.tagId);
+    if (!item) continue;
+
+    const textsByWork = textsByAction[match.action];
+    const texts = textsByWork.get(item.work.id) ?? [];
+    if (!texts.includes(item.tag.text)) texts.push(item.tag.text);
+    textsByWork.set(item.work.id, texts);
+  }
+
+  return textsByAction;
 }

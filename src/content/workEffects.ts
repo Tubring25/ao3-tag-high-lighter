@@ -2,9 +2,13 @@ import type { HideWorkMode, ParsedWork, WorkMatchSummary } from "../core/types";
 
 const PLACEHOLDER_SELECTOR = "[data-ao3th-collapse-placeholder]";
 const WARN_BANNER_SELECTOR = "[data-ao3th-warn-banner]";
+const CAUTION_BANNER_SELECTOR = "[data-ao3th-caution-banner]";
+const WARNING_BAR_MAX_TAGS = 4;
 
 interface WorkEffectOptions {
   hideWorkMode: HideWorkMode;
+  collapseReasons?: readonly string[];
+  warningReasons?: readonly string[];
 }
 
 interface ClearWorkEffectOptions {
@@ -20,12 +24,21 @@ export function applyWorkEffects(
 
   if (summary.hasWarn) {
     work.element.dataset.ao3thWarn = "true";
-    if (!work.isWorkDetailPage) {
-      ensureWarnBanner(work.element);
+    if ((options.warningReasons?.length ?? 0) <= WARNING_BAR_MAX_TAGS) {
+      if (work.isWorkDetailPage) {
+        ensureDetailWarningBar(work, options.warningReasons ?? []);
+      } else {
+        ensureWarnBanner(work.element);
+      }
     }
   }
 
-  if (!summary.hasHideWork || work.isWorkDetailPage) return;
+  if (!summary.hasHideWork) return;
+
+  if (work.isWorkDetailPage) {
+    ensureDetailCautionBar(work, options.collapseReasons ?? []);
+    return;
+  }
 
   if (options.hideWorkMode === "hide") {
     work.element.dataset.ao3thHidden = "hide";
@@ -35,7 +48,7 @@ export function applyWorkEffects(
 
   work.element.dataset.ao3thHidden = "collapse";
   work.element.hidden = false;
-  ensureCollapsePlaceholder(work.element);
+  ensureCollapsePlaceholder(work.element, options.collapseReasons ?? []);
 }
 
 export function clearWorkEffects(work: ParsedWork, options: ClearWorkEffectOptions = {}): void {
@@ -44,6 +57,11 @@ export function clearWorkEffects(work: ParsedWork, options: ClearWorkEffectOptio
   delete work.element.dataset.ao3thRuleIds;
   work.element.hidden = false;
   work.element.querySelector(WARN_BANNER_SELECTOR)?.remove();
+  work.element.querySelector(CAUTION_BANNER_SELECTOR)?.remove();
+
+  const detailMeta = findDetailMetaElement(work);
+  detailMeta?.querySelector(WARN_BANNER_SELECTOR)?.remove();
+  detailMeta?.querySelector(CAUTION_BANNER_SELECTOR)?.remove();
 
   if (!options.preserveCollapseState) {
     delete work.element.dataset.ao3thExpanded;
@@ -68,13 +86,77 @@ function ensureWarnBanner(workElement: HTMLElement): void {
   workElement.prepend(banner);
 }
 
-function ensureCollapsePlaceholder(workElement: HTMLElement): void {
-  if (workElement.querySelector(PLACEHOLDER_SELECTOR)) return;
+function ensureDetailWarningBar(work: ParsedWork, reasons: readonly string[]): void {
+  const metaElement = findDetailMetaElement(work);
+  if (!metaElement || metaElement.querySelector(WARN_BANNER_SELECTOR)) return;
+
+  const banner = createDetailBar({
+    className: "ao3th-detail-warning-bar",
+    dataName: "ao3thWarnBanner",
+    text: buildWarningMessage(reasons),
+  });
+  metaElement.prepend(banner);
+}
+
+function ensureDetailCautionBar(work: ParsedWork, reasons: readonly string[]): void {
+  const metaElement = findDetailMetaElement(work);
+  if (!metaElement || metaElement.querySelector(CAUTION_BANNER_SELECTOR)) return;
+
+  const banner = createDetailBar({
+    className: "ao3th-detail-caution-bar",
+    dataName: "ao3thCautionBanner",
+    text: buildCautionMessage(reasons),
+  });
+  const warningBar = metaElement.querySelector(WARN_BANNER_SELECTOR);
+  warningBar?.insertAdjacentElement("afterend", banner) ?? metaElement.prepend(banner);
+}
+
+interface DetailBarOptions {
+  className: string;
+  dataName: "ao3thWarnBanner" | "ao3thCautionBanner";
+  text: string;
+}
+
+function createDetailBar(options: DetailBarOptions): HTMLDivElement {
+  const banner = document.createElement("div");
+  banner.className = options.className;
+  banner.dataset[options.dataName] = "true";
+  banner.textContent = options.text;
+  return banner;
+}
+
+function findDetailMetaElement(work: ParsedWork): HTMLElement | null {
+  for (const tag of work.tags) {
+    const metaElement = tag.element.closest<HTMLElement>("dl.work.meta");
+    if (metaElement) return metaElement;
+  }
+
+  return work.element.querySelector<HTMLElement>("dl.work.meta");
+}
+
+function buildWarningMessage(reasons: readonly string[]): string {
+  if (reasons.length === 0) return "This work contains warning tags.";
+  return `This work contains warning tags: ${reasons.join(", ")}.`;
+}
+
+function buildCautionMessage(reasons: readonly string[]): string {
+  if (reasons.length === 0) return "Caution: This work matches tags you usually hide from listings.";
+  return `Caution: This work matches tags you usually hide from listings: ${reasons.join(", ")}.`;
+}
+
+function ensureCollapsePlaceholder(workElement: HTMLElement, reasons: readonly string[]): void {
+  const existing = workElement.querySelector<HTMLButtonElement>(PLACEHOLDER_SELECTOR);
+  if (existing) {
+    setCollapseReasons(existing, reasons);
+    renderCollapsePlaceholder(existing, workElement.dataset.ao3thExpanded === "true");
+    return;
+  }
 
   const button = document.createElement("button");
   button.type = "button";
   button.className = "ao3th-collapse-placeholder";
   button.dataset.ao3thCollapsePlaceholder = "true";
+  setCollapseReasons(button, reasons);
   renderCollapsePlaceholder(button, false);
   button.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -97,11 +179,35 @@ function renderCollapsePlaceholder(button: HTMLButtonElement, expanded: boolean)
   const message = getOrCreatePlaceholderPart(button, "ao3th-collapse-message");
   setTextWithoutChildMutation(
     message,
-    expanded ? "Collapsed work is expanded for this page." : "Work collapsed by hideWork rule."
+    expanded
+      ? "Collapsed work is expanded for this page."
+      : buildCollapsedMessage(getCollapseReasons(button))
   );
 
   const action = getOrCreatePlaceholderPart(button, "ao3th-collapse-action");
   setTextWithoutChildMutation(action, expanded ? "Hide again" : "Click to expand");
+}
+
+function buildCollapsedMessage(reasons: readonly string[]): string {
+  if (reasons.length === 0) return "This work is collapsed by a hideWork rule.";
+  if (reasons.length === 1) return `This work is collapsed by a hideWork rule: ${reasons[0]}`;
+  return `This work is collapsed by hideWork rules: ${reasons.join(", ")}`;
+}
+
+function setCollapseReasons(button: HTMLButtonElement, reasons: readonly string[]): void {
+  button.dataset.ao3thCollapseReasons = JSON.stringify([...new Set(reasons)]);
+}
+
+function getCollapseReasons(button: HTMLButtonElement): string[] {
+  const raw = button.dataset.ao3thCollapseReasons;
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 function getOrCreatePlaceholderPart(button: HTMLButtonElement, className: string): HTMLSpanElement {
