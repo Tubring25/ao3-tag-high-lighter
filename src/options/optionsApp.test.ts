@@ -10,6 +10,7 @@ describe("renderOptionsApp", () => {
     expect(container.textContent).toContain("Slow Burn");
     expect(container.textContent).toContain("highlight");
     expect(container.querySelectorAll("[data-rule-row]")).toHaveLength(2);
+    expect(getContentGrid(container).className).not.toContain("has-editor");
   });
 
   it("renders an empty state when there are no rules", async () => {
@@ -55,6 +56,90 @@ describe("renderOptionsApp", () => {
     expect(container.textContent).toContain("Angst");
   });
 
+  it("filters rules from the sidebar status shortcuts", async () => {
+    const container = document.createElement("div");
+
+    await renderOptionsApp(container, createDeps());
+    getButton(container, '[data-sidebar-status-filter="disabled"]').click();
+
+    expect(container.textContent).not.toContain("Slow Burn");
+    expect(container.textContent).toContain("Angst");
+  });
+
+  it("clears filters from the no-results empty state", async () => {
+    const container = document.createElement("div");
+
+    await renderOptionsApp(container, createDeps());
+    const search = getInput(container, "[data-options-search]");
+    search.value = "missing tag";
+    search.dispatchEvent(new Event("input"));
+
+    expect(container.textContent).toContain("No matching rules");
+    getButton(container, ".options-empty-action").click();
+
+    expect(getInput(container, "[data-options-search]").value).toBe("");
+    expect(container.querySelectorAll("[data-rule-row]")).toHaveLength(2);
+  });
+
+  it("opens the editor when a rule row is selected", async () => {
+    const container = document.createElement("div");
+
+    await renderOptionsApp(container, createDeps());
+    container.querySelector<HTMLElement>('[data-rule-row][data-rule-id="rule-2"]')?.click();
+
+    expect(getContentGrid(container).className).toContain("has-editor");
+    expect(getEditor(container).className).toContain("is-open");
+    expect(container.textContent).toContain("Editing “Angst”");
+  });
+
+  it("keeps the rule list scroll position when opening the editor", async () => {
+    const container = document.createElement("div");
+
+    await renderOptionsApp(container, createDeps());
+    getRuleList(container).scrollTop = 220;
+    container.querySelector<HTMLElement>('[data-rule-row][data-rule-id="rule-2"]')?.click();
+
+    expect(getRuleList(container).scrollTop).toBe(220);
+    expect(container.textContent).toContain("Editing “Angst”");
+  });
+
+  it("opens the editor for add mode without showing a cancel action", async () => {
+    const container = document.createElement("div");
+
+    await renderOptionsApp(container, createDeps());
+    getButton(container, "[data-options-add]").click();
+
+    expect(getContentGrid(container).className).toContain("has-editor");
+    expect(getEditor(container).className).toContain("is-open");
+    expect(container.textContent).toContain("New local rule");
+    expect(container.textContent).not.toContain("Cancel");
+  });
+
+  it("closes the editor when clicking outside the list and editor", async () => {
+    const container = document.createElement("div");
+
+    await renderOptionsApp(container, createDeps());
+    getButton(container, "[data-options-add]").click();
+    expect(getContentGrid(container).className).toContain("has-editor");
+
+    getInput(container, "[data-options-search]").click();
+
+    expect(getContentGrid(container).className).not.toContain("has-editor");
+    expect(getEditor(container).className).not.toContain("is-open");
+  });
+
+  it("keeps full pattern text available as a native tooltip", async () => {
+    const container = document.createElement("div");
+    const longPattern = "This is a very long AO3 tag pattern that should be truncated in the list";
+
+    await renderOptionsApp(
+      container,
+      createDeps({ listRules: vi.fn(async () => [createRule({ pattern: longPattern })]) })
+    );
+
+    expect(container.querySelector<HTMLElement>(".rule-pattern")?.title).toBe(longPattern);
+  });
+
   it("adds a new rule from the form", async () => {
     const container = document.createElement("div");
     const createdRule = createRule({ id: "rule-3", pattern: "Fluff", action: "warn" });
@@ -78,6 +163,7 @@ describe("renderOptionsApp", () => {
       source: "manual",
     });
     expect(container.textContent).toContain("Fluff");
+    expect(getContentGrid(container).className).not.toContain("has-editor");
   });
 
   it("edits an existing rule from the form", async () => {
@@ -99,6 +185,7 @@ describe("renderOptionsApp", () => {
       enabled: true,
     });
     expect(container.textContent).toContain("Slow Burn Updated");
+    expect(getContentGrid(container).className).not.toContain("has-editor");
   });
 
   it("deletes a rule after confirmation", async () => {
@@ -216,6 +303,24 @@ function getForm(container: HTMLElement): HTMLFormElement {
   const form = container.querySelector<HTMLFormElement>("[data-rule-form]");
   if (!form) throw new Error("Missing rule form");
   return form;
+}
+
+function getEditor(container: HTMLElement): HTMLElement {
+  const editor = container.querySelector<HTMLElement>("[data-options-editor]");
+  if (!editor) throw new Error("Missing options editor");
+  return editor;
+}
+
+function getContentGrid(container: HTMLElement): HTMLElement {
+  const grid = container.querySelector<HTMLElement>(".options-content-grid");
+  if (!grid) throw new Error("Missing options content grid");
+  return grid;
+}
+
+function getRuleList(container: HTMLElement): HTMLElement {
+  const list = container.querySelector<HTMLElement>("[data-options-rule-list]");
+  if (!list) throw new Error("Missing options rule list");
+  return list;
 }
 
 async function flushAsyncHandlers(): Promise<void> {
