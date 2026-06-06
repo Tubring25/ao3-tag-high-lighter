@@ -20,17 +20,7 @@ export function calculateHitStats(
 
   if (!matchResult) return stats;
 
-  const tagWorkById = new Map<string, ParsedWork>();
-  for (const work of works) {
-    for (const tag of work.tags) {
-      tagWorkById.set(tag.id, work);
-    }
-  }
-  const detailWorkIds = new Set(
-    works.filter((work) => work.isWorkDetailPage).map((work) => work.id)
-  );
-
-  for (const action of resolveTagActions(matchResult.tagMatches, tagWorkById).values()) {
+  for (const action of resolveTagActions(matchResult.tagMatches).values()) {
     if (action === "highlight") {
       stats.highlight += 1;
     }
@@ -41,7 +31,7 @@ export function calculateHitStats(
       stats.warn += 1;
     }
 
-    if (summary.hasHideWork && !detailWorkIds.has(summary.workId)) {
+    if (summary.hasHideWork) {
       stats.hideWork += 1;
     }
   }
@@ -49,17 +39,11 @@ export function calculateHitStats(
   return stats;
 }
 
-function resolveTagActions(
-  matches: readonly TagMatch[],
-  tagWorkById: ReadonlyMap<string, ParsedWork>
-): Map<string, RuleAction> {
+function resolveTagActions(matches: readonly TagMatch[]): Map<string, RuleAction> {
   const grouped = new Map<string, TagActionState>();
   const resolved = new Map<string, RuleAction>();
 
   for (const match of matches) {
-    const work = tagWorkById.get(match.tagId);
-    if (work?.isWorkDetailPage && match.action === "hideWork") continue;
-
     const state = grouped.get(match.tagId) ?? { actions: [] };
     state.actions.push(match.action);
     grouped.set(match.tagId, state);

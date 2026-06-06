@@ -9,15 +9,20 @@ import {
 export interface PopupAppDeps {
   getSettings(): Promise<Settings>;
   saveSettings(patch: Partial<Settings>): Promise<Settings>;
-  getCurrentTabId(): Promise<number | null>;
+  getCurrentTab(): Promise<CurrentTab | null>;
   sendMessageToTab(tabId: number, message: RuntimeMessage): Promise<unknown>;
   openOptionsPage(): void;
   logError(error: unknown): void;
 }
 
+export interface CurrentTab {
+  id?: number;
+  url?: string;
+}
+
 interface ChromeLike {
   tabs?: {
-    query(queryInfo: { active: boolean; currentWindow: boolean }): Promise<Array<{ id?: number }>>;
+    query(queryInfo: { active: boolean; currentWindow: boolean }): Promise<CurrentTab[]>;
     sendMessage(tabId: number, message: RuntimeMessage): Promise<unknown>;
   };
   runtime?: {
@@ -44,21 +49,46 @@ export async function renderPopupApp(
   const shell = container.querySelector<HTMLElement>("[data-popup-shell]");
   if (!shell) return;
 
-  const settings = await deps.getSettings();
-  const stats = await getCurrentPageStats(deps);
+  const currentTab = await getCurrentTabSafely(deps);
+  const pageLabel = getPageLabel(currentTab);
+  let settings: Settings;
 
-  renderHeader(shell, settings, stats, deps);
+  try {
+    settings = await deps.getSettings();
+  } catch (error) {
+    deps.logError(error);
+    settings = createFallbackSettings();
+    renderHeader(shell, settings, null, deps, pageLabel);
+    renderErrorNotice(shell);
+    renderActions(shell, settings, deps);
+    return;
+  }
+
+  const stats = await getCurrentPageStats(deps, currentTab);
+
+  renderHeader(shell, settings, stats, deps, pageLabel);
   renderPageStatus(shell, settings, stats);
-  renderStats(shell, stats);
+  renderStats(shell, stats, !settings.extensionEnabled);
   renderActions(shell, settings, deps);
 }
 
-async function getCurrentPageStats(deps: PopupAppDeps): Promise<HitStats | null> {
-  const tabId = await deps.getCurrentTabId();
-  if (tabId == null) return null;
+async function getCurrentTabSafely(deps: PopupAppDeps): Promise<CurrentTab | null> {
+  try {
+    return await deps.getCurrentTab();
+  } catch (error) {
+    deps.logError(error);
+    return null;
+  }
+}
+
+async function getCurrentPageStats(
+  deps: PopupAppDeps,
+  currentTab: CurrentTab | null
+): Promise<HitStats | null> {
+  if (currentTab?.id == null) return null;
 
   try {
-    const response = await deps.sendMessageToTab(tabId, { type: "GET_HIT_STATS" });
+    const response = await deps.sendMessageToTab(currentTab.id, { type: "GET_HIT_STATS" });
     return isHitStats(response) ? response : null;
   } catch {
     return null;
@@ -76,7 +106,8 @@ function renderHeader(
   container: HTMLElement,
   settings: Settings,
   stats: HitStats | null,
-  deps: PopupAppDeps
+  deps: PopupAppDeps,
+  pageLabelText: string
 ): void {
   const header = document.createElement("header");
   header.className = "popup-header";
@@ -90,7 +121,7 @@ function renderHeader(
 
   const pageLabel = document.createElement("p");
   pageLabel.className = "popup-page-label";
-  pageLabel.textContent = "archiveofourown.org";
+  pageLabel.textContent = pageLabelText;
 
   brand.append(title, pageLabel);
 
@@ -115,10 +146,20 @@ function renderHeader(
   toggle.type = "checkbox";
   toggle.checked = settings.extensionEnabled;
   toggle.dataset.popupToggle = "true";
+  toggle.setAttribute("aria-label", "Extension enabled");
   attachSettingToggle(toggle, "extensionEnabled", status, saveStatus, deps, getExtensionStateLabel, {
     onSaveSuccess: (enabled) => {
       const notice = container.querySelector<HTMLElement>("[data-popup-notice]");
       if (notice) applyPageStatus(notice, enabled, stats);
+      const statsSection = container.querySelector<HTMLElement>(".popup-stats");
+      if (statsSection) {
+        if (enabled) {
+          delete statsSection.dataset.state;
+        } else {
+          statsSection.dataset.state = "paused";
+        }
+      }
+      syncPausedControls(container, enabled);
     },
   });
 
@@ -155,6 +196,24 @@ function renderPageStatus(
   container.appendChild(notice);
 }
 
+function renderErrorNotice(container: HTMLElement): void {
+  const notice = document.createElement("section");
+  notice.className = "popup-notice";
+  notice.dataset.popupNotice = "true";
+  notice.dataset.notice = "error";
+
+  const title = document.createElement("h2");
+  title.className = "popup-notice-title";
+  title.textContent = "Popup settings could not load.";
+
+  const body = document.createElement("p");
+  body.className = "popup-notice-body";
+  body.textContent = "Open Manage rules, or try closing and reopening the popup.";
+
+  notice.append(title, body);
+  container.appendChild(notice);
+}
+
 function applyPageStatus(notice: HTMLElement, extensionEnabled: boolean, stats: HitStats | null): void {
   const title = notice.querySelector<HTMLElement>(".popup-notice-title");
   const body = notice.querySelector<HTMLElement>(".popup-notice-body");
@@ -167,29 +226,33 @@ function applyPageStatus(notice: HTMLElement, extensionEnabled: boolean, stats: 
   } else if (!extensionEnabled) {
     notice.dataset.notice = "paused";
     title.textContent = "Extension paused.";
-    body.textContent = "Turn the global toggle on to highlight, warn, or collapse matching works.";
+    body.textContent =
+      getVisibleMatchCount(stats) > 0
+        ? "Matches found, styling paused. Turn the global toggle on to apply styles."
+        : "Turn the global toggle on to highlight, warn, or caution matching works.";
   } else if (getVisibleMatchCount(stats) === 0) {
     notice.dataset.notice = "empty";
     title.textContent = "No rule matches on this page yet.";
     body.textContent = "Styles are active. Use Manage rules or hover AO3 tags to add rules.";
   } else {
     notice.dataset.notice = "active";
-    title.textContent = `${getVisibleMatchCount(stats)} tag matches on this page`;
+    title.textContent = `${getVisibleMatchCount(stats)} page matches found`;
     body.textContent =
-      "Styles are active. Hover any AO3 tag to add a rule without leaving the page.";
+      "Styles are active. Caution matches stay visible on work pages; listing pages can collapse matching works.";
   }
 }
 
-function renderStats(container: HTMLElement, stats: HitStats | null): void {
+function renderStats(container: HTMLElement, stats: HitStats | null, paused: boolean): void {
   if (!stats) return;
 
   const section = document.createElement("section");
   section.className = "popup-stats";
+  if (paused) section.dataset.state = "paused";
 
   const rows: Array<[string, string, number]> = [
-    ["Highlight", "highlight", stats.highlight],
-    ["Warn", "warn", stats.warn],
-    ["Collapsed works", "hideWork", stats.hideWork],
+    ["Highlight tags", "highlight", stats.highlight],
+    ["Warning", "warn", stats.warn],
+    ["Caution", "hideWork", stats.hideWork],
   ];
 
   for (const [label, key, count] of rows) {
@@ -211,6 +274,7 @@ function renderActions(container: HTMLElement, settings: Settings, deps: PopupAp
   manageButton.type = "button";
   manageButton.className = "popup-button popup-button-primary";
   manageButton.dataset.popupOptions = "true";
+  if (!settings.extensionEnabled) manageButton.dataset.state = "paused";
   manageButton.textContent = "Manage rules";
   manageButton.addEventListener("click", () => {
     deps.openOptionsPage();
@@ -243,7 +307,7 @@ function createHoverButtonSetting(settings: Settings, deps: PopupAppDeps): HTMLE
   const status = document.createElement("span");
   status.className = "popup-setting-status";
   status.dataset.popupHoverStatus = "true";
-  status.textContent = getOnOffLabel(settings.hoverButtonEnabled);
+  status.textContent = getOnOffLabel(settings.extensionEnabled && settings.hoverButtonEnabled);
 
   const saveStatus = document.createElement("span");
   saveStatus.className = "popup-save-status";
@@ -255,9 +319,16 @@ function createHoverButtonSetting(settings: Settings, deps: PopupAppDeps): HTMLE
 
   const toggle = document.createElement("input");
   toggle.type = "checkbox";
-  toggle.checked = settings.hoverButtonEnabled;
+  toggle.checked = settings.extensionEnabled && settings.hoverButtonEnabled;
+  toggle.disabled = !settings.extensionEnabled;
   toggle.dataset.popupHoverToggle = "true";
-  attachSettingToggle(toggle, "hoverButtonEnabled", status, saveStatus, deps, getOnOffLabel);
+  toggle.dataset.popupPreferredChecked = String(settings.hoverButtonEnabled);
+  toggle.setAttribute("aria-label", "Tag hover quick-add enabled");
+  attachSettingToggle(toggle, "hoverButtonEnabled", status, saveStatus, deps, getOnOffLabel, {
+    onSaveSuccess: (enabled) => {
+      toggle.dataset.popupPreferredChecked = String(enabled);
+    },
+  });
 
   const switchTrack = document.createElement("span");
   switchTrack.className = "popup-switch-track";
@@ -306,7 +377,7 @@ async function saveToggleSetting(
 
   toggle.disabled = true;
   stateElement.textContent = getStateLabel(nextChecked);
-  setSaveStatus(saveStatusElement, "Saving...", "pending");
+  clearSaveStatus(saveStatusElement);
 
   try {
     const patch: Partial<Settings> = { [settingKey]: nextChecked };
@@ -324,7 +395,7 @@ async function saveToggleSetting(
   }
 }
 
-function setSaveStatus(element: HTMLElement, text: string, status: "pending" | "error"): void {
+function setSaveStatus(element: HTMLElement, text: string, status: "error"): void {
   element.textContent = text;
   element.dataset.status = status;
 }
@@ -360,15 +431,66 @@ function getVisibleMatchCount(stats: HitStats): number {
   return stats.highlight + stats.warn + stats.hideWork;
 }
 
+function syncPausedControls(container: HTMLElement, extensionEnabled: boolean): void {
+  const manageButton = container.querySelector<HTMLElement>("[data-popup-options]");
+  if (manageButton) {
+    if (extensionEnabled) {
+      delete manageButton.dataset.state;
+    } else {
+      manageButton.dataset.state = "paused";
+    }
+  }
+
+  const hoverToggle = container.querySelector<HTMLInputElement>("[data-popup-hover-toggle]");
+  const hoverStatus = container.querySelector<HTMLElement>("[data-popup-hover-status]");
+  if (!hoverToggle) return;
+
+  const preferredChecked = hoverToggle.dataset.popupPreferredChecked === "true";
+  if (extensionEnabled) {
+    hoverToggle.disabled = false;
+    hoverToggle.checked = preferredChecked;
+    if (hoverStatus) hoverStatus.textContent = getOnOffLabel(preferredChecked);
+    return;
+  }
+
+  hoverToggle.checked = false;
+  hoverToggle.disabled = true;
+  if (hoverStatus) hoverStatus.textContent = getOnOffLabel(false);
+}
+
+function getPageLabel(tab: CurrentTab | null): string {
+  if (!tab?.url) return "Current tab";
+
+  try {
+    const url = new URL(tab.url);
+    if (url.hostname === "archiveofourown.org") {
+      return /^\/works\/\d+(?:\/|$)/.test(url.pathname) ? "AO3 work page" : "AO3 page";
+    }
+    return url.hostname;
+  } catch {
+    return "Current tab";
+  }
+}
+
+function createFallbackSettings(): Settings {
+  return {
+    extensionEnabled: false,
+    hoverButtonEnabled: true,
+    showToast: true,
+    hideWorkMode: "collapse",
+    enableOnWorkDetailPage: true,
+  };
+}
+
 function createRealDeps(): PopupAppDeps {
   return {
     getSettings: defaultGetSettings,
     saveSettings: defaultSaveSettings,
-    getCurrentTabId: async () => {
+    getCurrentTab: async () => {
       const tabsApi = getChrome().tabs;
       if (!tabsApi) return null;
       const [tab] = await tabsApi.query({ active: true, currentWindow: true });
-      return tab?.id ?? null;
+      return tab ?? null;
     },
     sendMessageToTab: async (tabId, message) => {
       const tabsApi = getChrome().tabs;
