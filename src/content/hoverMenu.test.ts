@@ -103,6 +103,30 @@ describe("hoverMenu", () => {
     expect(onRuleCreated).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the clicked tag locked while the action menu is open", async () => {
+    const work = createWork(["Slow Burn", "Major Character Death"]);
+    const addRule = vi.fn(async () => createRule());
+
+    mountHoverMenu([work], createSettings(), createOptions({ addRule }));
+    work.tags[0].element.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    getShadowButton()?.click();
+
+    work.tags[1].element.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    getMenuOptions().find((option) => option.dataset.action === "warn")?.click();
+    await flushAsyncHandlers();
+
+    expect(addRule).toHaveBeenCalledWith({
+      pattern: "Slow Burn",
+      action: "warn",
+      matchMode: "exact",
+      category: "freeform",
+      enabled: true,
+      source: "quickAdd",
+    });
+    expect(work.tags[0].element.dataset.ao3thHovered).toBeUndefined();
+    expect(work.tags[1].element.dataset.ao3thHovered).toBeUndefined();
+  });
+
   it("shows a toast after quick-add succeeds when enabled", async () => {
     const work = createWork();
     const showToast = vi.fn();
@@ -162,20 +186,24 @@ function createRule(overrides: Partial<Rule> = {}): Rule {
   };
 }
 
-function createWork(): ParsedWork {
+function createWork(tagTexts: string[] = ["Slow Burn"]): ParsedWork {
   const element = document.createElement("article");
-  const tagElement = document.createElement("a");
-  tagElement.textContent = "Slow Burn";
-  document.body.append(element, tagElement);
+  const tags = tagTexts.map((text, index) => {
+    const tagElement = document.createElement("a");
+    tagElement.textContent = text;
+    document.body.appendChild(tagElement);
+    return createTag(tagElement, { id: `tag-${index + 1}`, text, normalizedText: text.toLowerCase() });
+  });
+  document.body.prepend(element);
 
   return {
     id: "work-1",
     element,
-    tags: [createTag(tagElement)],
+    tags,
   };
 }
 
-function createTag(element: HTMLElement): ParsedTag {
+function createTag(element: HTMLElement, overrides: Partial<ParsedTag> = {}): ParsedTag {
   return {
     id: "tag-1",
     text: "Slow Burn",
@@ -183,6 +211,7 @@ function createTag(element: HTMLElement): ParsedTag {
     category: "freeform",
     element,
     workId: "work-1",
+    ...overrides,
   };
 }
 

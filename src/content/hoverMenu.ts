@@ -28,6 +28,7 @@ const HIDE_DELAY_MS = 180;
 let shadowHost: HTMLElement | null = null;
 let shadowRoot: ShadowRoot | null = null;
 let currentTag: ParsedTag | null = null;
+let lockedMenuTag: ParsedTag | null = null;
 let hoveredTagElement: HTMLElement | null = null;
 let hoverButton: HTMLButtonElement | null = null;
 let hoverMenu: HTMLElement | null = null;
@@ -54,6 +55,7 @@ export function mountHoverMenu(
     for (const tag of work.tags) {
       addManagedListener(tag.element, "mouseenter", () => {
         cancelHide();
+        if (isMenuOpen()) return;
         currentTag = tag;
         setHoveredTagElement(tag.element);
         showButton(tag.element);
@@ -99,6 +101,7 @@ export function unmountHoverMenu(): void {
 
   removeListeners = [];
   currentTag = null;
+  lockedMenuTag = null;
   setHoveredTagElement(null);
   hoverButton = null;
   hoverMenu = null;
@@ -116,12 +119,12 @@ async function handleMenuClick(
   if (!(target instanceof HTMLElement)) return;
 
   const option = target.closest<HTMLButtonElement>("[data-ao3th-menu-option]");
-  if (!option || !currentTag) return;
+  if (!option || !lockedMenuTag) return;
 
   const action = option.dataset.action as Rule["action"] | undefined;
   if (!isRuleAction(action)) return;
 
-  const selectedTag = currentTag;
+  const selectedTag = lockedMenuTag;
   await (options.addRule ?? defaultAddRule)({
     pattern: selectedTag.text,
     action,
@@ -310,12 +313,13 @@ function showButton(tagElement: HTMLElement): void {
 function showMenu(): void {
   if (!hoverMenu || !hoverButton || !currentTag) return;
 
-  updateMenuContext(hoverMenu, currentTag);
+  lockedMenuTag = currentTag;
+  updateMenuContext(hoverMenu, lockedMenuTag);
   hoverMenu.hidden = false;
   hoverButton.dataset.ao3thActive = "true";
   hoverButton.setAttribute("aria-expanded", "true");
 
-  const tagRect = currentTag.element.getBoundingClientRect();
+  const tagRect = lockedMenuTag.element.getBoundingClientRect();
   const position = clampPosition(
     tagRect.left,
     tagRect.bottom + 6,
@@ -336,6 +340,7 @@ function hideMenuAndButton(): void {
   }
   hoverMenu?.setAttribute("hidden", "");
   currentTag = null;
+  lockedMenuTag = null;
   setHoveredTagElement(null);
 }
 
@@ -348,6 +353,10 @@ function cancelHide(): void {
   if (!hideTimeout) return;
   clearTimeout(hideTimeout);
   hideTimeout = null;
+}
+
+function isMenuOpen(): boolean {
+  return Boolean(hoverMenu && !hoverMenu.hidden);
 }
 
 function updateMenuContext(menu: HTMLElement, tag: ParsedTag): void {
