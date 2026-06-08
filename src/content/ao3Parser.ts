@@ -13,6 +13,8 @@ const DETAIL_CATEGORY_MAP: Record<string, ParsedTagCategory> = {
   freeform: "freeform",
 };
 
+const LISTING_BLURB_SELECTOR = "li.work.blurb, li.series.blurb, li.bookmark.blurb";
+
 export function parseAo3Works(root: ParentNode): ParsedWork[] {
   const listingWorks = parseListingPage(root);
   if (listingWorks.length > 0) return listingWorks;
@@ -21,10 +23,12 @@ export function parseAo3Works(root: ParentNode): ParsedWork[] {
 }
 
 function parseListingPage(root: ParentNode): ParsedWork[] {
-  const workElements = root.querySelectorAll<HTMLElement>("li.work.blurb");
+  const workElements = root.querySelectorAll<HTMLElement>(LISTING_BLURB_SELECTOR);
   const works: ParsedWork[] = [];
 
   for (const workEl of workElements) {
+    if (isNestedListingBlurb(workEl)) continue;
+
     const workId = workEl.id;
     if (!workId) continue;
 
@@ -32,6 +36,10 @@ function parseListingPage(root: ParentNode): ParsedWork[] {
   }
 
   return works;
+}
+
+function isNestedListingBlurb(workEl: HTMLElement): boolean {
+  return workEl.parentElement?.closest(LISTING_BLURB_SELECTOR) !== null;
 }
 
 function parseListingTags(workEl: HTMLElement, workId: string): ParsedTag[] {
