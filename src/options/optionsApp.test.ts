@@ -10,6 +10,9 @@ describe("renderOptionsApp", () => {
 
     expect(container.textContent).toContain("Slow Burn");
     expect(container.textContent).toContain("Highlight");
+    expect(container.querySelector<HTMLAnchorElement>(".options-guide-link")?.getAttribute("href")).toBe(
+      "guide.html"
+    );
     expect(container.querySelectorAll("[data-rule-row]")).toHaveLength(2);
     expect(getContentGrid(container).className).not.toContain("has-editor");
   });

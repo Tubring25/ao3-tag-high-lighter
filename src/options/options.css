@@ -194,11 +194,27 @@ button {
   font-weight: 700;
 }
 
+.options-guide-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 39px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #4b3f35;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .options-add-button:hover,
 .options-add-button:focus-visible {
   background: #7f0000;
 }
 
+.options-guide-link:hover,
+.options-guide-link:focus-visible,
 .options-style-button:hover,
 .options-style-button:focus-visible {
   background: #eadfce;

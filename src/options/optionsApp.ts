@@ -171,6 +171,13 @@ export async function renderOptionsApp(
     const actionGroup = document.createElement("div");
     actionGroup.className = "options-manager-actions";
 
+    const guideLink = document.createElement("a");
+    guideLink.className = "options-guide-link";
+    guideLink.href = "guide.html";
+    guideLink.target = "_blank";
+    guideLink.rel = "noreferrer";
+    guideLink.textContent = "User guide";
+
     const stylesButton = document.createElement("button");
     stylesButton.type = "button";
     stylesButton.className = "options-style-button";
@@ -179,7 +186,7 @@ export async function renderOptionsApp(
     stylesButton.textContent = "Tag styles";
     stylesButton.addEventListener("click", openStylesEditor);
 
-    actionGroup.append(stylesButton, addButton);
+    actionGroup.append(guideLink, stylesButton, addButton);
     top.append(copy, actionGroup);
     panel.append(top, createFilterBar());
 
