@@ -205,11 +205,11 @@ function renderErrorNotice(container: HTMLElement): void {
 
   const title = document.createElement("h2");
   title.className = "popup-notice-title";
-  title.textContent = "Popup settings could not load.";
+  title.textContent = "Settings could not load.";
 
   const body = document.createElement("p");
   body.className = "popup-notice-body";
-  body.textContent = "Open Manage rules, or try closing and reopening the popup.";
+  body.textContent = "Try reopening the popup, or open Manage rules.";
 
   notice.append(title, body);
   container.appendChild(notice);
@@ -222,24 +222,23 @@ function applyPageStatus(notice: HTMLElement, extensionEnabled: boolean, stats: 
 
   if (!stats) {
     notice.dataset.notice = "unavailable";
-    title.textContent = "No AO3 page stats available.";
-    body.textContent = "Open an AO3 listing or work page to see current-page matches.";
+    title.textContent = "Open an AO3 page.";
+    body.textContent = "Matches will appear here.";
   } else if (!extensionEnabled) {
     notice.dataset.notice = "paused";
     title.textContent = "Extension paused.";
     body.textContent =
       getVisibleMatchCount(stats) > 0
-        ? "Matches found, styling paused. Turn the global toggle on to apply styles."
-        : "Turn the global toggle on to highlight, warn, or caution matching works.";
+        ? "Matches found. Turn on the extension to apply styles."
+        : "Turn on the extension to highlight, warn, or caution works.";
   } else if (getVisibleMatchCount(stats) === 0) {
     notice.dataset.notice = "empty";
     title.textContent = "No rule matches on this page yet.";
-    body.textContent = "Styles are active. Use Manage rules or hover AO3 tags to add rules.";
+    body.textContent = "Use Manage rules or hover AO3 tags to add rules.";
   } else {
     notice.dataset.notice = "active";
-    title.textContent = `${getVisibleMatchCount(stats)} page matches found`;
-    body.textContent =
-      "Styles are active. Caution matches stay visible on work pages; listing pages can collapse matching works.";
+    title.textContent = `${getVisibleMatchCount(stats)} matches on this page`;
+    body.textContent = "Styles are active on this page.";
   }
 }
 

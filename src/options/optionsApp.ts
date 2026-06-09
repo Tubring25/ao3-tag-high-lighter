@@ -94,7 +94,7 @@ export async function renderOptionsApp(
 
     const subtitle = document.createElement("p");
     subtitle.className = "options-subtitle";
-    subtitle.textContent = "Create, edit, and pause local tag rules for AO3 search and work pages.";
+    subtitle.textContent = "Manage how AO3 tags are highlighted, marked, or collapsed.";
 
     const copy = document.createElement("div");
     copy.append(eyebrow, title, subtitle);
@@ -114,7 +114,7 @@ export async function renderOptionsApp(
 
     const brand = document.createElement("div");
     brand.className = "options-brand";
-    brand.innerHTML = `<strong>AO3 Tag<br>Highlighter</strong><span>Local rule control</span>`;
+    brand.innerHTML = `<strong>AO3 Tag<br>Highlighter</strong><span>Rule settings</span>`;
 
     const nav = document.createElement("nav");
     nav.className = "options-nav";
@@ -140,7 +140,7 @@ export async function renderOptionsApp(
 
     const note = document.createElement("p");
     note.className = "options-sidebar-note";
-    note.textContent = "Rules are stored locally in this browser. No sync, no account, no network.";
+    note.textContent = "Saved in this browser.";
 
     sidebar.append(brand, nav, note);
     return sidebar;
@@ -157,7 +157,7 @@ export async function renderOptionsApp(
     const title = document.createElement("h2");
     title.textContent = "Rules";
     const subtitle = document.createElement("p");
-    subtitle.textContent = "Scan, filter, and edit rule behavior from one screen.";
+    subtitle.textContent = "Find and update your rules.";
     copy.append(title, subtitle);
 
     const addButton = document.createElement("button");
@@ -197,7 +197,7 @@ export async function renderOptionsApp(
 
     const search = document.createElement("input");
     search.type = "search";
-    search.placeholder = "Search pattern...";
+    search.placeholder = "Search tags...";
     search.value = filterText;
     search.dataset.optionsSearch = "true";
     search.addEventListener("input", () => {
@@ -299,8 +299,8 @@ export async function renderOptionsApp(
     const copy = document.createElement("p");
     copy.textContent =
       allRules.length === 0
-        ? "Create your first local tag rule to highlight, warn, or collapse AO3 works."
-        : "Try a different search or clear filters to return to your full rule list.";
+        ? "Add a tag rule to highlight, warn, or collapse works."
+        : "Try another search or clear filters.";
 
     const action = document.createElement("button");
     action.type = "button";
@@ -460,7 +460,7 @@ export async function renderOptionsApp(
     const rule = isEditing ? selectedRule : null;
 
     const title = document.createElement("h2");
-    title.textContent = isEditing && rule ? `Editing “${rule.pattern}”` : "New local rule";
+    title.textContent = isEditing && rule ? `Editing “${rule.pattern}”` : "New rule";
 
     const mode = document.createElement("p");
     mode.className = "options-editor-mode";
@@ -469,8 +469,8 @@ export async function renderOptionsApp(
     const hint = document.createElement("p");
     hint.className = "options-editor-hint";
     hint.textContent = isEditing
-      ? "Save changes to update AO3 pages after the next render."
-      : "Create a local rule from a tag pattern.";
+      ? "Save changes to update matching AO3 pages."
+      : "Choose a tag and what should happen.";
 
     const form = document.createElement("form");
     form.dataset.ruleForm = "true";
@@ -523,14 +523,14 @@ export async function renderOptionsApp(
 
     const mode = document.createElement("p");
     mode.className = "options-editor-mode";
-    mode.textContent = "Global appearance";
+    mode.textContent = "Tag appearance";
 
     const title = document.createElement("h2");
     title.textContent = "Tag styles";
 
     const hint = document.createElement("p");
     hint.className = "options-editor-hint";
-    hint.textContent = "Labels and colors apply to every rule with this action.";
+    hint.textContent = "These styles apply to all rules with this action.";
 
     const form = document.createElement("form");
     form.dataset.styleForm = "true";
@@ -635,12 +635,12 @@ export async function renderOptionsApp(
     const title = document.createElement("h3");
     title.textContent = "Collapse work";
     const hint = document.createElement("p");
-    hint.textContent = "Fixed action and color.";
+    hint.textContent = "Always uses the collapse style.";
     copy.append(title, hint);
 
     const locked = document.createElement("span");
     locked.className = "style-locked-label";
-    locked.textContent = "Fixed";
+    locked.textContent = "Locked";
 
     row.append(copy, locked);
     return row;

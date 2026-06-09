@@ -112,7 +112,7 @@ describe("renderOptionsApp", () => {
 
     expect(getContentGrid(container).className).toContain("has-editor");
     expect(getEditor(container).className).toContain("is-open");
-    expect(container.textContent).toContain("New local rule");
+    expect(container.textContent).toContain("New rule");
     expect(container.textContent).not.toContain("Cancel");
   });
 

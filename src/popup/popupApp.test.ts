@@ -30,7 +30,7 @@ describe("renderPopupApp", () => {
     expect(container.querySelector("[data-popup-global-status]")?.textContent).toBe("Paused");
     expect(container.querySelector("[data-popup-global-save-status]")?.textContent).toBe("");
     expect(container.textContent).toContain("Extension paused");
-    expect(container.textContent).toContain("Matches found, styling paused");
+    expect(container.textContent).toContain("Matches found. Turn on the extension to apply styles.");
     expect(container.querySelector("[data-popup-notice]")?.getAttribute("data-notice")).toBe("paused");
     expect(container.querySelector(".popup-stats")?.getAttribute("data-state")).toBe("paused");
     expect(container.querySelector("[data-popup-options]")?.getAttribute("data-state")).toBe("paused");
@@ -82,7 +82,7 @@ describe("renderPopupApp", () => {
       })
     );
 
-    expect(container.textContent).toContain("4 page matches found");
+    expect(container.textContent).toContain("4 matches on this page");
     expect(container.textContent).toContain("AO3 work page");
     expect(container.textContent).toContain("Highlight tags2");
     expect(container.textContent).toContain("Warning1");
@@ -155,7 +155,7 @@ describe("renderPopupApp", () => {
 
     await renderPopupApp(container, createDeps({ getCurrentTab: vi.fn(async () => null) }));
 
-    expect(container.textContent).toContain("No AO3 page stats available");
+    expect(container.textContent).toContain("Open an AO3 page.");
   });
 
   it("shows a fallback when content script stats are unavailable", async () => {
@@ -170,7 +170,7 @@ describe("renderPopupApp", () => {
       })
     );
 
-    expect(container.textContent).toContain("No AO3 page stats available");
+    expect(container.textContent).toContain("Open an AO3 page.");
   });
 
   it("renders an explicit error state when settings fail to load", async () => {
@@ -187,7 +187,7 @@ describe("renderPopupApp", () => {
       })
     );
 
-    expect(container.textContent).toContain("Popup settings could not load.");
+    expect(container.textContent).toContain("Settings could not load.");
     expect(container.textContent).toContain("Manage rules");
     expect(logError).toHaveBeenCalledTimes(1);
   });
