@@ -101,6 +101,38 @@ describe("renderMatches", () => {
     expect(work.tags[0].element.dataset.ao3thRuleIds).toBe("rule-highlight");
   });
 
+  it("sets custom action style variables for content CSS", () => {
+    const work = createWork();
+
+    renderMatches(
+      [work],
+      createMatchResult({
+        tagMatches: [{ tagId: "tag-1", ruleId: "rule-highlight", action: "highlight" }],
+      }),
+      {
+        actionStyles: {
+          highlight: {
+            label: "Like",
+            backgroundColor: "#fff4d8",
+            textColor: "#5f3b00",
+          },
+          warn: {
+            label: "Avoid",
+            backgroundColor: "#f4e6e3",
+            textColor: "#990000",
+          },
+        },
+      }
+    );
+
+    expect(document.documentElement.style.getPropertyValue("--ao3th-highlight-bg")).toBe("#fff4d8");
+    expect(document.documentElement.style.getPropertyValue("--ao3th-highlight-text")).toBe(
+      "#5f3b00"
+    );
+    expect(document.documentElement.style.getPropertyValue("--ao3th-warn-bg")).toBe("#f4e6e3");
+    expect(document.documentElement.style.getPropertyValue("--ao3th-warn-text")).toBe("#990000");
+  });
+
   it("resolves multiple tag matches to the highest priority action", () => {
     const work = createWork();
 

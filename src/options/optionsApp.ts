@@ -1,4 +1,13 @@
-import type { MatchMode, Rule, RuleAction, TagCategory } from "../core/types";
+import type {
+  CustomizableRuleAction,
+  MatchMode,
+  Rule,
+  RuleAction,
+  RuleActionStyles,
+  Settings,
+  TagCategory,
+} from "../core/types";
+import { ACTION_STYLE_PRESETS, getActionLabel } from "../core/actionStyles";
 import { LOG_PREFIX } from "../shared/constants";
 import {
   addRule as defaultAddRule,
@@ -7,13 +16,17 @@ import {
   toggleRule as defaultToggleRule,
   updateRule as defaultUpdateRule,
 } from "../storage/ruleStorage";
+import {
+  getSettings as defaultGetSettings,
+  saveSettings as defaultSaveSettings,
+} from "../storage/settingsStorage";
 
 type RuleCreateInput = Omit<Rule, "id" | "createdAt" | "updatedAt">;
 type RuleUpdateInput = Partial<Omit<Rule, "id" | "createdAt">>;
 type ActionFilter = RuleAction | "all";
 type CategoryFilter = TagCategory | "all-categories";
 type StatusFilter = "all" | "enabled" | "disabled";
-type EditorMode = "create" | "edit";
+type EditorMode = "create" | "edit" | "styles";
 
 export interface OptionsAppDeps {
   listRules(): Promise<Rule[]>;
@@ -21,6 +34,8 @@ export interface OptionsAppDeps {
   updateRule(id: string, patch: RuleUpdateInput): Promise<Rule>;
   deleteRule(id: string): Promise<void>;
   toggleRule(id: string): Promise<Rule>;
+  getSettings(): Promise<Settings>;
+  saveSettings(patch: Partial<Settings>): Promise<Settings>;
   confirmDelete(rule: Rule): boolean;
   alertError(message: string): void;
   logError(error: unknown): void;
@@ -35,6 +50,7 @@ export async function renderOptionsApp(
   deps: OptionsAppDeps = createRealDeps()
 ): Promise<void> {
   let allRules = await deps.listRules();
+  let settings = await deps.getSettings();
   let filterText = "";
   let filterAction: ActionFilter = "all";
   let filterCategory: CategoryFilter = "all-categories";
@@ -152,7 +168,19 @@ export async function renderOptionsApp(
     addButton.textContent = "+ Add rule";
     addButton.addEventListener("click", openCreateEditor);
 
-    top.append(copy, addButton);
+    const actionGroup = document.createElement("div");
+    actionGroup.className = "options-manager-actions";
+
+    const stylesButton = document.createElement("button");
+    stylesButton.type = "button";
+    stylesButton.className = "options-style-button";
+    stylesButton.dataset.optionsStyles = "true";
+    stylesButton.dataset.optionsEditorActivator = "true";
+    stylesButton.textContent = "Tag styles";
+    stylesButton.addEventListener("click", openStylesEditor);
+
+    actionGroup.append(stylesButton, addButton);
+    top.append(copy, actionGroup);
     panel.append(top, createFilterBar());
 
     const content = document.createElement("div");
@@ -180,7 +208,7 @@ export async function renderOptionsApp(
     const actionFilter = document.createElement("select");
     actionFilter.dataset.optionsActionFilter = "true";
     appendOption(actionFilter, "all", "All actions");
-    for (const action of ACTIONS) appendOption(actionFilter, action, formatAction(action));
+    for (const action of ACTIONS) appendOption(actionFilter, action, formatActionLabel(action));
     actionFilter.value = filterAction;
     actionFilter.addEventListener("change", () => {
       filterAction = actionFilter.value as ActionFilter;
@@ -320,7 +348,7 @@ export async function renderOptionsApp(
 
     row.append(
       createPatternCell(rule.pattern),
-      createBadge("rule-badge", rule.action, formatAction(rule.action)),
+      createBadge("rule-badge", rule.action, formatActionLabel(rule.action)),
       createCell("rule-meta", rule.matchMode),
       createCell("rule-meta", formatCategory(rule.category)),
       createStatusToggle(rule),
@@ -353,6 +381,11 @@ export async function renderOptionsApp(
     const badge = document.createElement("div");
     badge.className = `${className} is-${action}`;
     badge.textContent = text;
+    if (action !== "hideWork") {
+      const style = settings.actionStyles[action];
+      badge.style.backgroundColor = style.backgroundColor;
+      badge.style.color = style.textColor;
+    }
     return badge;
   }
 
@@ -415,6 +448,8 @@ export async function renderOptionsApp(
   }
 
   function createRuleEditor(): HTMLElement {
+    if (editorMode === "styles") return createTagStylesEditor();
+
     const editor = document.createElement("aside");
     editor.className = editorOpen ? "options-editor is-open" : "options-editor";
     editor.ariaHidden = editorOpen ? "false" : "true";
@@ -442,7 +477,7 @@ export async function renderOptionsApp(
 
     form.append(
       createTextField("pattern", "Pattern", rule?.pattern ?? ""),
-      createSelectField("action", "Action", ACTIONS, rule?.action ?? "highlight", formatAction),
+      createSelectField("action", "Action", ACTIONS, rule?.action ?? "highlight", formatActionLabel),
       createSelectField("matchMode", "Match mode", MATCH_MODES, rule?.matchMode ?? "exact"),
       createSelectField("category", "Category", CATEGORIES, rule?.category ?? "all", formatCategory),
       createCheckboxField("enabled", "Enabled", rule?.enabled ?? true)
@@ -480,6 +515,153 @@ export async function renderOptionsApp(
     return editor;
   }
 
+  function createTagStylesEditor(): HTMLElement {
+    const editor = document.createElement("aside");
+    editor.className = "options-editor options-style-editor is-open";
+    editor.ariaHidden = "false";
+    editor.dataset.optionsEditor = "true";
+
+    const mode = document.createElement("p");
+    mode.className = "options-editor-mode";
+    mode.textContent = "Global appearance";
+
+    const title = document.createElement("h2");
+    title.textContent = "Tag styles";
+
+    const hint = document.createElement("p");
+    hint.className = "options-editor-hint";
+    hint.textContent = "Labels and colors apply to every rule with this action.";
+
+    const form = document.createElement("form");
+    form.dataset.styleForm = "true";
+
+    const highlightRow = createStyleEditorRow("highlight", settings.actionStyles.highlight);
+    const warnRow = createStyleEditorRow("warn", settings.actionStyles.warn);
+    form.append(highlightRow, warnRow, createLockedStyleRow());
+
+    const footer = document.createElement("div");
+    footer.className = "editor-actions";
+
+    const submit = document.createElement("button");
+    submit.type = "submit";
+    submit.textContent = "Save";
+    footer.appendChild(submit);
+    form.appendChild(footer);
+
+    form.addEventListener("input", () => updateStylePreviews(form));
+    form.addEventListener("click", (event) => handleStylePresetClick(event, form));
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      void withStorageErrorHandling(async () => {
+        settings = await deps.saveSettings({ actionStyles: readStyleForm(form) });
+        closeEditor();
+        renderPage();
+      });
+    });
+
+    editor.append(mode, title, hint, form);
+    return editor;
+  }
+
+  function createStyleEditorRow(
+    action: CustomizableRuleAction,
+    style: RuleActionStyles["highlight"]
+  ): HTMLElement {
+    const row = document.createElement("section");
+    row.className = "style-editor-row";
+    row.dataset.styleAction = action;
+
+    const header = document.createElement("div");
+    header.className = "style-editor-row-header";
+
+    const title = document.createElement("h3");
+    title.textContent = action === "highlight" ? "Highlight" : "Warning";
+
+    const preview = document.createElement("span");
+    preview.className = "style-preview";
+    preview.dataset.stylePreview = action;
+    preview.textContent = style.label;
+    preview.style.backgroundColor = style.backgroundColor;
+    preview.style.color = style.textColor;
+
+    header.append(title, preview);
+
+    const fields = document.createElement("div");
+    fields.className = "style-editor-fields";
+    fields.append(
+      createStyleInput(`${action}Label`, "Label", "text", style.label),
+      createStyleInput(`${action}BackgroundColor`, "BG", "color", style.backgroundColor),
+      createStyleInput(`${action}TextColor`, "Text", "color", style.textColor)
+    );
+
+    row.append(header, fields);
+    row.appendChild(createStylePresetPicker(action));
+    return row;
+  }
+
+  function createStylePresetPicker(action: CustomizableRuleAction): HTMLElement {
+    const wrapper = document.createElement("div");
+    wrapper.className = "style-preset-picker";
+
+    const label = document.createElement("p");
+    label.className = "style-preset-label";
+    label.textContent = "Recommended palettes";
+
+    const options = document.createElement("div");
+    options.className = "style-preset-options";
+
+    for (const preset of ACTION_STYLE_PRESETS[action]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "style-preset-button";
+      button.dataset.stylePresetAction = action;
+      button.dataset.backgroundColor = preset.backgroundColor;
+      button.dataset.textColor = preset.textColor;
+      button.textContent = preset.name;
+      button.style.backgroundColor = preset.backgroundColor;
+      button.style.color = preset.textColor;
+      options.appendChild(button);
+    }
+
+    wrapper.append(label, options);
+    return wrapper;
+  }
+
+  function createLockedStyleRow(): HTMLElement {
+    const row = document.createElement("section");
+    row.className = "style-editor-row style-editor-row-locked";
+
+    const copy = document.createElement("div");
+    const title = document.createElement("h3");
+    title.textContent = "Collapse work";
+    const hint = document.createElement("p");
+    hint.textContent = "Fixed action and color.";
+    copy.append(title, hint);
+
+    const locked = document.createElement("span");
+    locked.className = "style-locked-label";
+    locked.textContent = "Fixed";
+
+    row.append(copy, locked);
+    return row;
+  }
+
+  function createStyleInput(
+    name: string,
+    label: string,
+    type: "text" | "color",
+    value: string
+  ): HTMLElement {
+    const wrapper = createFieldWrapper(name, label);
+    const input = document.createElement("input");
+    input.type = type;
+    input.name = name;
+    input.value = value;
+    input.required = true;
+    wrapper.appendChild(input);
+    return wrapper;
+  }
+
   async function withStorageErrorHandling(operation: () => Promise<void>): Promise<void> {
     try {
       await operation();
@@ -502,6 +684,14 @@ export async function renderOptionsApp(
     renderPage();
   }
 
+  function openStylesEditor(): void {
+    rememberRuleListScroll();
+    editorMode = "styles";
+    selectedRuleId = null;
+    editorOpen = true;
+    renderPage();
+  }
+
   function openEditEditor(ruleId: string): void {
     rememberRuleListScroll();
     editorMode = "edit";
@@ -514,6 +704,10 @@ export async function renderOptionsApp(
     editorMode = "create";
     selectedRuleId = null;
     editorOpen = false;
+  }
+
+  function formatActionLabel(action: RuleAction): string {
+    return getActionLabel(action, settings.actionStyles);
   }
 
   function closeEditorOnOutsideClick(event: MouseEvent): void {
@@ -541,6 +735,62 @@ export async function renderOptionsApp(
     const list = container.querySelector<HTMLElement>("[data-options-rule-list]");
     if (list) list.scrollTop = ruleListScrollTop;
   }
+}
+
+function readStyleForm(form: HTMLFormElement): RuleActionStyles {
+  const formData = new FormData(form);
+  return {
+    highlight: {
+      label: String(formData.get("highlightLabel") ?? ""),
+      backgroundColor: String(formData.get("highlightBackgroundColor") ?? ""),
+      textColor: String(formData.get("highlightTextColor") ?? ""),
+    },
+    warn: {
+      label: String(formData.get("warnLabel") ?? ""),
+      backgroundColor: String(formData.get("warnBackgroundColor") ?? ""),
+      textColor: String(formData.get("warnTextColor") ?? ""),
+    },
+  };
+}
+
+function updateStylePreviews(form: HTMLFormElement): void {
+  const styles = readStyleForm(form);
+  updateStylePreview(form, "highlight", styles.highlight);
+  updateStylePreview(form, "warn", styles.warn);
+}
+
+function handleStylePresetClick(event: Event, form: HTMLFormElement): void {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+
+  const button = target.closest<HTMLButtonElement>("[data-style-preset-action]");
+  if (!button) return;
+
+  const action = button.dataset.stylePresetAction;
+  if (action !== "highlight" && action !== "warn") return;
+
+  const backgroundInput = form.querySelector<HTMLInputElement>(
+    `[name="${action}BackgroundColor"]`
+  );
+  const textInput = form.querySelector<HTMLInputElement>(`[name="${action}TextColor"]`);
+  if (!backgroundInput || !textInput) return;
+
+  backgroundInput.value = button.dataset.backgroundColor ?? backgroundInput.value;
+  textInput.value = button.dataset.textColor ?? textInput.value;
+  updateStylePreviews(form);
+}
+
+function updateStylePreview(
+  form: HTMLFormElement,
+  action: "highlight" | "warn",
+  style: RuleActionStyles["highlight"]
+): void {
+  const preview = form.querySelector<HTMLElement>(`[data-style-preview="${action}"]`);
+  if (!preview) return;
+
+  preview.textContent = style.label;
+  preview.style.backgroundColor = style.backgroundColor;
+  preview.style.color = style.textColor;
 }
 
 function createTextField(name: string, label: string, value: string): HTMLElement {
@@ -611,11 +861,6 @@ function appendOption(select: HTMLSelectElement, value: string, label: string): 
   select.appendChild(option);
 }
 
-function formatAction(action: RuleAction): string {
-  if (action === "hideWork") return "Collapse work";
-  return action;
-}
-
 function formatCategory(category: TagCategory): string {
   if (category === "all") return "Any category";
   return category;
@@ -628,6 +873,8 @@ function createRealDeps(): OptionsAppDeps {
     updateRule: defaultUpdateRule,
     deleteRule: defaultDeleteRule,
     toggleRule: defaultToggleRule,
+    getSettings: defaultGetSettings,
+    saveSettings: defaultSaveSettings,
     confirmDelete: (rule) => window.confirm(`Delete rule "${rule.pattern}"?`),
     alertError: (message) => window.alert(message),
     logError: (error) => {

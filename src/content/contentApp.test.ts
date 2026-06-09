@@ -1,6 +1,7 @@
 import type { MatchResult, ParsedTag, ParsedWork, Rule, Settings } from "../core/types";
 import { calculateHitStats } from "./hitStats";
 import { startContentApp, type ContentAppDeps } from "./contentApp";
+import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
 
 describe("startContentApp", () => {
   it("registers the message listener but does not read rules or render when disabled", async () => {
@@ -48,7 +49,10 @@ describe("startContentApp", () => {
     await startContentApp(deps);
 
     expect(matchRules).toHaveBeenCalledWith([work], [rule]);
-    expect(renderMatches).toHaveBeenCalledWith([work], matchResult, { hideWorkMode: "hide" });
+    expect(renderMatches).toHaveBeenCalledWith([work], matchResult, {
+      hideWorkMode: "hide",
+      actionStyles: DEFAULT_ACTION_STYLES,
+    });
   });
 
   it("starts the page observer after enabled initialization", async () => {
@@ -123,6 +127,7 @@ describe("startContentApp", () => {
     expect(listRules).toHaveBeenCalledTimes(2);
     expect(renderMatches).toHaveBeenLastCalledWith([work], addedResult, {
       hideWorkMode: "collapse",
+      actionStyles: DEFAULT_ACTION_STYLES,
     });
   });
 
@@ -240,7 +245,10 @@ describe("startContentApp", () => {
 
     expect(listRules).toHaveBeenCalledTimes(2);
     expect(deps.parseAo3Works).toHaveBeenCalledTimes(2);
-    expect(renderMatches).toHaveBeenLastCalledWith([reparsedWork], secondResult, { hideWorkMode: "collapse" });
+    expect(renderMatches).toHaveBeenLastCalledWith([reparsedWork], secondResult, {
+      hideWorkMode: "collapse",
+      actionStyles: DEFAULT_ACTION_STYLES,
+    });
   });
 
   it("clears old rendering when RULES_UPDATED leaves no rules", async () => {
@@ -322,6 +330,7 @@ describe("startContentApp", () => {
     expect(parseAo3Works).toHaveBeenCalledTimes(2);
     expect(renderMatches).toHaveBeenLastCalledWith([newWork], expect.any(Object), {
       hideWorkMode: "collapse",
+      actionStyles: DEFAULT_ACTION_STYLES,
     });
   });
 
@@ -509,6 +518,7 @@ function createSettings(overrides: Partial<Settings> = {}): Settings {
     showToast: true,
     hideWorkMode: "collapse",
     enableOnWorkDetailPage: true,
+    actionStyles: DEFAULT_ACTION_STYLES,
     ...overrides,
   };
 }

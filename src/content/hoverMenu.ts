@@ -1,4 +1,5 @@
 import type { ParsedTag, ParsedWork, Rule, Settings } from "../core/types";
+import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
 import { LOG_PREFIX } from "../shared/constants";
 import { addRule as defaultAddRule } from "../storage/ruleStorage";
 import { showToast as defaultShowToast } from "./toast";
@@ -11,16 +12,7 @@ export interface HoverMenuOptions {
   showToast?: (message: string) => void;
 }
 
-interface MenuAction {
-  action: Rule["action"];
-  label: string;
-}
-
-const MENU_ACTIONS: readonly MenuAction[] = [
-  { action: "highlight", label: "Highlight tag" },
-  { action: "warn", label: "Warn work" },
-  { action: "hideWork", label: "Collapse work" },
-];
+const MENU_ACTIONS: readonly Rule["action"][] = ["highlight", "warn", "hideWork"];
 
 const BUTTON_SIZE_PX = 18;
 const HIDE_DELAY_MS = 180;
@@ -45,10 +37,10 @@ export function mountHoverMenu(
   if (!settings.hoverButtonEnabled || works.length === 0) return;
 
   const root = ensureShadowRoot();
-  injectShadowStyles(root);
+  injectShadowStyles(root, settings);
 
   hoverButton = createButton();
-  hoverMenu = createMenu();
+  hoverMenu = createMenu(settings);
   root.append(hoverButton, hoverMenu);
 
   for (const work of works) {
@@ -156,8 +148,9 @@ function ensureShadowRoot(): ShadowRoot {
   return shadowRoot;
 }
 
-function injectShadowStyles(root: ShadowRoot): void {
+function injectShadowStyles(root: ShadowRoot, settings: Settings): void {
   const style = document.createElement("style");
+  const { highlight, warn } = settings.actionStyles;
   style.textContent = `
     [data-ao3th-hover-button] {
       position: fixed;
@@ -229,12 +222,13 @@ function injectShadowStyles(root: ShadowRoot): void {
     }
 
     [data-action="highlight"] {
-      background: #fff3db;
-      color: #111111;
+      background: ${highlight.backgroundColor};
+      color: ${highlight.textColor};
     }
 
     [data-action="warn"] {
-      background: #f5e9e7;
+      background: ${warn.backgroundColor};
+      color: ${warn.textColor};
     }
 
     [data-ao3th-menu-option]:hover,
@@ -252,7 +246,7 @@ function injectShadowStyles(root: ShadowRoot): void {
     [data-action="warn"]:focus-visible {
       background: #ead8d4;
     }
-  `;
+`;
   root.appendChild(style);
 }
 
@@ -268,7 +262,7 @@ function createButton(): HTMLButtonElement {
   return button;
 }
 
-function createMenu(): HTMLElement {
+function createMenu(settings: Settings): HTMLElement {
   const menu = document.createElement("div");
   menu.dataset.ao3thHoverMenu = "true";
   menu.setAttribute("role", "menu");
@@ -281,18 +275,25 @@ function createMenu(): HTMLElement {
   const options = document.createElement("div");
   options.dataset.ao3thMenuOptions = "true";
 
-  for (const item of MENU_ACTIONS) {
+  for (const action of MENU_ACTIONS) {
     const option = document.createElement("button");
     option.type = "button";
     option.dataset.ao3thMenuOption = "true";
-    option.dataset.action = item.action;
+    option.dataset.action = action;
     option.setAttribute("role", "menuitem");
-    option.textContent = item.label;
+    option.textContent = getQuickAddActionLabel(action, settings);
     options.appendChild(option);
   }
 
   menu.append(title, options);
   return menu;
+}
+
+function getQuickAddActionLabel(action: Rule["action"], settings: Settings): string {
+  if (action === "hideWork") return "Collapse work";
+  if (action === "highlight") return `${settings.actionStyles.highlight.label} tag`;
+  if (settings.actionStyles.warn.label === DEFAULT_ACTION_STYLES.warn.label) return "Warn work";
+  return `${settings.actionStyles.warn.label} work`;
 }
 
 function showButton(tagElement: HTMLElement): void {

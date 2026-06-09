@@ -1,9 +1,18 @@
-import type { HideWorkMode, MatchResult, ParsedWork, RuleAction, TagMatch } from "../core/types";
+import type {
+  HideWorkMode,
+  MatchResult,
+  ParsedWork,
+  RuleAction,
+  RuleActionStyles,
+  TagMatch,
+} from "../core/types";
+import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
 import { resolveHighestPriorityAction } from "../core/priority";
 import { applyWorkEffects, clearWorkEffects } from "./workEffects";
 
 export interface RenderOptions {
   hideWorkMode?: HideWorkMode;
+  actionStyles?: RuleActionStyles;
 }
 
 interface TagRenderState {
@@ -22,6 +31,8 @@ export function renderMatches(
   options: RenderOptions = {}
 ): void {
   const hideWorkMode = options.hideWorkMode ?? "collapse";
+  const actionStyles = options.actionStyles ?? DEFAULT_ACTION_STYLES;
+  applyActionStyleVariables(actionStyles);
   const detailWorkIds = new Set(
     works.filter((work) => work.isWorkDetailPage).map((work) => work.id)
   );
@@ -62,6 +73,19 @@ export function renderMatches(
       warningReasons: matchedTagTexts.warn.get(summary.workId) ?? [],
     });
   }
+}
+
+function applyActionStyleVariables(actionStyles: RuleActionStyles): void {
+  document.documentElement.style.setProperty(
+    "--ao3th-highlight-bg",
+    actionStyles.highlight.backgroundColor
+  );
+  document.documentElement.style.setProperty(
+    "--ao3th-highlight-text",
+    actionStyles.highlight.textColor
+  );
+  document.documentElement.style.setProperty("--ao3th-warn-bg", actionStyles.warn.backgroundColor);
+  document.documentElement.style.setProperty("--ao3th-warn-text", actionStyles.warn.textColor);
 }
 
 interface ClearRenderOptions {

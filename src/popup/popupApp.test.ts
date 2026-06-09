@@ -1,5 +1,6 @@
 import type { HitStats } from "../shared/message";
 import type { Settings } from "../core/types";
+import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
 import { renderPopupApp, type PopupAppDeps } from "./popupApp";
 
 describe("renderPopupApp", () => {
@@ -89,6 +90,36 @@ describe("renderPopupApp", () => {
     expect(container.textContent).not.toContain("Collapsed works");
     expect(container.textContent).not.toContain("Local only");
     expect(container.textContent).not.toContain("MVP");
+  });
+
+  it("uses custom action labels in stats", async () => {
+    const container = document.createElement("div");
+
+    await renderPopupApp(
+      container,
+      createDeps({
+        getSettings: vi.fn(async () =>
+          createSettings({
+            actionStyles: {
+              highlight: {
+                label: "Like",
+                backgroundColor: "#fff4d8",
+                textColor: "#5f3b00",
+              },
+              warn: {
+                label: "Avoid",
+                backgroundColor: "#f4e6e3",
+                textColor: "#990000",
+              },
+            },
+          })
+        ),
+        sendMessageToTab: vi.fn(async () => createHitStats({ highlight: 2, warn: 1 })),
+      })
+    );
+
+    expect(container.textContent).toContain("Like tags2");
+    expect(container.textContent).toContain("Avoid1");
   });
 
   it("uses the active tab host as the popup page label", async () => {
@@ -256,6 +287,7 @@ function createSettings(overrides: Partial<Settings> = {}): Settings {
     showToast: true,
     hideWorkMode: "collapse",
     enableOnWorkDetailPage: true,
+    actionStyles: DEFAULT_ACTION_STYLES,
     ...overrides,
   };
 }

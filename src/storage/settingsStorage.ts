@@ -1,4 +1,5 @@
 import type { Settings } from "../core/types";
+import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
 import { STORAGE_KEY_SETTINGS } from "../shared/constants";
 import type { RuntimeMessage } from "../shared/message";
 
@@ -8,6 +9,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showToast: true,
   hideWorkMode: "collapse",
   enableOnWorkDetailPage: true,
+  actionStyles: DEFAULT_ACTION_STYLES,
 };
 
 interface ChromeLike {
@@ -26,15 +28,12 @@ export async function getSettings(): Promise<Settings> {
   try {
     const result = await getChrome().storage.local.get(STORAGE_KEY_SETTINGS);
     const stored = result[STORAGE_KEY_SETTINGS];
-    const settings = {
-      ...DEFAULT_SETTINGS,
-      ...(isObjectRecord(stored) ? stored : {}),
-    };
+    const settings = mergeSettings(stored);
 
     validateSettingsInput(settings);
     return settings;
   } catch {
-    return { ...DEFAULT_SETTINGS };
+    return cloneDefaultSettings();
   }
 }
 
@@ -42,7 +41,7 @@ export async function saveSettings(patch: Partial<Settings>): Promise<Settings> 
   validateSettingsInput(patch);
 
   const current = await getSettings();
-  const updated: Settings = { ...current, ...patch };
+  const updated = mergeSettings({ ...current, ...patch });
   validateSettingsInput(updated);
 
   await getChrome().storage.local.set({ [STORAGE_KEY_SETTINGS]: updated });
@@ -51,7 +50,7 @@ export async function saveSettings(patch: Partial<Settings>): Promise<Settings> 
 }
 
 export async function resetSettings(): Promise<Settings> {
-  const defaults = { ...DEFAULT_SETTINGS };
+  const defaults = cloneDefaultSettings();
   await getChrome().storage.local.set({ [STORAGE_KEY_SETTINGS]: defaults });
   await notifyUpdate({ type: "SETTINGS_UPDATED" });
   return defaults;
@@ -62,6 +61,7 @@ export function validateSettingsInput(input: Partial<Settings>): void {
   validateBooleanField(input, "hoverButtonEnabled");
   validateBooleanField(input, "showToast");
   validateBooleanField(input, "enableOnWorkDetailPage");
+  validateActionStylesInput(input.actionStyles);
 
   if (
     input.hideWorkMode !== undefined &&
@@ -69,6 +69,68 @@ export function validateSettingsInput(input: Partial<Settings>): void {
     input.hideWorkMode !== "hide"
   ) {
     throw new Error(`Invalid hideWorkMode: ${String(input.hideWorkMode)}`);
+  }
+}
+
+function mergeSettings(input: unknown): Settings {
+  const stored = isObjectRecord(input) ? input : {};
+  return {
+    ...DEFAULT_SETTINGS,
+    ...stored,
+    actionStyles: mergeActionStyles(stored.actionStyles),
+  };
+}
+
+function mergeActionStyles(input: unknown): Settings["actionStyles"] {
+  const stored = isObjectRecord(input) ? input : {};
+  return {
+    highlight: {
+      ...DEFAULT_ACTION_STYLES.highlight,
+      ...(isObjectRecord(stored.highlight) ? stored.highlight : {}),
+    },
+    warn: {
+      ...DEFAULT_ACTION_STYLES.warn,
+      ...(isObjectRecord(stored.warn) ? stored.warn : {}),
+    },
+  };
+}
+
+function cloneDefaultSettings(): Settings {
+  return mergeSettings(DEFAULT_SETTINGS);
+}
+
+function validateActionStylesInput(input: unknown): void {
+  if (input === undefined) return;
+  if (!isObjectRecord(input)) {
+    throw new Error("Invalid actionStyles: expected object");
+  }
+
+  validateActionStyleInput(input.highlight, "highlight");
+  validateActionStyleInput(input.warn, "warn");
+}
+
+function validateActionStyleInput(input: unknown, action: "highlight" | "warn"): void {
+  if (input === undefined) return;
+  if (!isObjectRecord(input)) {
+    throw new Error(`Invalid actionStyles.${action}: expected object`);
+  }
+
+  validateOptionalString(input.label, `actionStyles.${action}.label`);
+  validateOptionalHexColor(input.backgroundColor, `actionStyles.${action}.backgroundColor`);
+  validateOptionalHexColor(input.textColor, `actionStyles.${action}.textColor`);
+}
+
+function validateOptionalString(value: unknown, key: string): void {
+  if (value === undefined) return;
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`Invalid ${key}: expected non-empty string`);
+  }
+}
+
+function validateOptionalHexColor(value: unknown, key: string): void {
+  if (value === undefined) return;
+  if (typeof value !== "string" || !/^#[0-9a-fA-F]{6}$/.test(value)) {
+    throw new Error(`Invalid ${key}: expected #RRGGBB color`);
   }
 }
 

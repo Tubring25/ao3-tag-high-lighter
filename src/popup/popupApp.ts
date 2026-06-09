@@ -1,4 +1,5 @@
 import type { Settings } from "../core/types";
+import { DEFAULT_ACTION_STYLES, getActionLabel } from "../core/actionStyles";
 import { LOG_PREFIX } from "../shared/constants";
 import type { HitStats, RuntimeMessage } from "../shared/message";
 import {
@@ -68,7 +69,7 @@ export async function renderPopupApp(
 
   renderHeader(shell, settings, stats, deps, pageLabel);
   renderPageStatus(shell, settings, stats);
-  renderStats(shell, stats, !settings.extensionEnabled);
+  renderStats(shell, stats, !settings.extensionEnabled, settings);
   renderActions(shell, settings, deps);
 }
 
@@ -242,7 +243,12 @@ function applyPageStatus(notice: HTMLElement, extensionEnabled: boolean, stats: 
   }
 }
 
-function renderStats(container: HTMLElement, stats: HitStats | null, paused: boolean): void {
+function renderStats(
+  container: HTMLElement,
+  stats: HitStats | null,
+  paused: boolean,
+  settings: Settings
+): void {
   if (!stats) return;
 
   const section = document.createElement("section");
@@ -250,8 +256,8 @@ function renderStats(container: HTMLElement, stats: HitStats | null, paused: boo
   if (paused) section.dataset.state = "paused";
 
   const rows: Array<[string, string, number]> = [
-    ["Highlight tags", "highlight", stats.highlight],
-    ["Warning", "warn", stats.warn],
+    [`${getActionLabel("highlight", settings.actionStyles)} tags`, "highlight", stats.highlight],
+    [getActionLabel("warn", settings.actionStyles), "warn", stats.warn],
     ["Caution", "hideWork", stats.hideWork],
   ];
 
@@ -479,6 +485,7 @@ function createFallbackSettings(): Settings {
     showToast: true,
     hideWorkMode: "collapse",
     enableOnWorkDetailPage: true,
+    actionStyles: DEFAULT_ACTION_STYLES,
   };
 }
 

@@ -155,6 +155,12 @@ button {
   margin-bottom: 18px;
 }
 
+.options-manager-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .options-manager-top h2,
 .options-editor h2 {
   margin: 0;
@@ -179,9 +185,24 @@ button {
   font-weight: 700;
 }
 
+.options-style-button {
+  min-height: 41px;
+  padding: 0 14px;
+  border: 1px solid #cfc3b7;
+  background: #f3eadc;
+  color: #4b3f35;
+  font-weight: 700;
+}
+
 .options-add-button:hover,
 .options-add-button:focus-visible {
   background: #7f0000;
+}
+
+.options-style-button:hover,
+.options-style-button:focus-visible {
+  background: #eadfce;
+  outline: 0;
 }
 
 .options-toolbar {
@@ -522,6 +543,106 @@ button {
   width: auto;
   min-height: auto;
   accent-color: #990000;
+}
+
+.options-style-editor form {
+  display: grid;
+  gap: 12px;
+}
+
+.style-editor-row {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #d8d1c8;
+  background: #ffffff;
+}
+
+.style-editor-row-header,
+.style-editor-row-locked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.style-editor-row h3 {
+  margin: 0;
+  color: #111111;
+  font: 700 13px/1.25 "Funnel Sans", Verdana, Geneva, sans-serif;
+}
+
+.style-editor-row p {
+  margin: 3px 0 0;
+  color: #6b6259;
+  font-size: 12px;
+}
+
+.style-preview {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  font: 700 11px/1.2 "Funnel Sans", Verdana, Geneva, sans-serif;
+  white-space: nowrap;
+}
+
+.style-editor-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 70px 70px;
+  gap: 8px;
+}
+
+.style-editor-fields .form-field {
+  margin-bottom: 0;
+}
+
+.style-editor-fields input[type="color"] {
+  padding: 3px;
+}
+
+.style-preset-picker {
+  display: grid;
+  gap: 6px;
+}
+
+.style-preset-label {
+  margin: 0;
+  color: #6b6259;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.style-preset-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.style-preset-button {
+  min-height: 25px;
+  padding: 0 8px;
+  border: 1px solid #d8d1c8;
+  background: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.style-preset-button:hover,
+.style-preset-button:focus-visible {
+  filter: brightness(0.96);
+  outline: 0;
+}
+
+.style-editor-row-locked {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.style-locked-label {
+  color: #6b7280;
+  font: 700 11px/1.25 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  text-transform: uppercase;
 }
 
 .editor-actions {

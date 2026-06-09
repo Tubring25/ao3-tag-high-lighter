@@ -80,6 +80,29 @@ describe("settingsStorage", () => {
     });
   });
 
+  it("merges stored partial action styles with defaults", async () => {
+    store[STORAGE_KEY_SETTINGS] = {
+      actionStyles: {
+        highlight: {
+          label: "Like",
+          backgroundColor: "#fff4d8",
+        },
+      },
+    };
+
+    await expect(getSettings()).resolves.toEqual({
+      ...DEFAULT_SETTINGS,
+      actionStyles: {
+        highlight: {
+          ...DEFAULT_SETTINGS.actionStyles.highlight,
+          label: "Like",
+          backgroundColor: "#fff4d8",
+        },
+        warn: DEFAULT_SETTINGS.actionStyles.warn,
+      },
+    });
+  });
+
   it("saves partial settings patches and returns complete settings", async () => {
     const updated = await saveSettings({ extensionEnabled: false });
 
@@ -117,6 +140,17 @@ describe("settingsStorage", () => {
     expect(() =>
       validateSettingsInput({ enableOnWorkDetailPage: "yes" as unknown as boolean })
     ).toThrow("Invalid enableOnWorkDetailPage: expected boolean");
+    expect(() =>
+      validateSettingsInput({
+        actionStyles: {
+          ...DEFAULT_SETTINGS.actionStyles,
+          warn: {
+            ...DEFAULT_SETTINGS.actionStyles.warn,
+            backgroundColor: "red",
+          },
+        },
+      })
+    ).toThrow("Invalid actionStyles.warn.backgroundColor: expected #RRGGBB color");
   });
 
   it("keeps writes successful when update notification has no listener", async () => {

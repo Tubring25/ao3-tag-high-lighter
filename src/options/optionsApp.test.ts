@@ -1,4 +1,5 @@
 import type { MatchMode, Rule, RuleAction, TagCategory } from "../core/types";
+import { DEFAULT_SETTINGS } from "../storage/settingsStorage";
 import { renderOptionsApp, type OptionsAppDeps } from "./optionsApp";
 
 describe("renderOptionsApp", () => {
@@ -8,7 +9,7 @@ describe("renderOptionsApp", () => {
     await renderOptionsApp(container, createDeps());
 
     expect(container.textContent).toContain("Slow Burn");
-    expect(container.textContent).toContain("highlight");
+    expect(container.textContent).toContain("Highlight");
     expect(container.querySelectorAll("[data-rule-row]")).toHaveLength(2);
     expect(getContentGrid(container).className).not.toContain("has-editor");
   });
@@ -113,6 +114,57 @@ describe("renderOptionsApp", () => {
     expect(getEditor(container).className).toContain("is-open");
     expect(container.textContent).toContain("New local rule");
     expect(container.textContent).not.toContain("Cancel");
+  });
+
+  it("opens and saves global tag styles from the drawer", async () => {
+    const container = document.createElement("div");
+    const saveSettings = vi.fn(async (patch) => ({ ...DEFAULT_SETTINGS, ...patch }));
+
+    await renderOptionsApp(container, createDeps({ saveSettings }));
+    getButton(container, "[data-options-styles]").click();
+
+    expect(getContentGrid(container).className).toContain("has-editor");
+    expect(getEditor(container).className).toContain("is-open");
+    expect(container.textContent).toContain("Tag styles");
+
+    getInput(container, '[name="highlightLabel"]').value = "Like";
+    getInput(container, '[name="highlightBackgroundColor"]').value = "#fff4d8";
+    getInput(container, '[name="highlightTextColor"]').value = "#5f3b00";
+    getInput(container, '[name="warnLabel"]').value = "Avoid";
+    getInput(container, '[name="warnBackgroundColor"]').value = "#f4e6e3";
+    getInput(container, '[name="warnTextColor"]').value = "#990000";
+    getStyleForm(container).dispatchEvent(new SubmitEvent("submit"));
+    await flushAsyncHandlers();
+
+    expect(saveSettings).toHaveBeenCalledWith({
+      actionStyles: {
+        highlight: {
+          label: "Like",
+          backgroundColor: "#fff4d8",
+          textColor: "#5f3b00",
+        },
+        warn: {
+          label: "Avoid",
+          backgroundColor: "#f4e6e3",
+          textColor: "#990000",
+        },
+      },
+    });
+    expect(getContentGrid(container).className).not.toContain("has-editor");
+  });
+
+  it("fills color inputs and updates the preview when a recommended palette is selected", async () => {
+    const container = document.createElement("div");
+
+    await renderOptionsApp(container, createDeps());
+    getButton(container, "[data-options-styles]").click();
+
+    getButton(container, '[data-style-preset-action="highlight"][data-background-color="#e7f4ec"]').click();
+
+    expect(getInput(container, '[name="highlightBackgroundColor"]').value).toBe("#e7f4ec");
+    expect(getInput(container, '[name="highlightTextColor"]').value).toBe("#14532d");
+    expect(getStylePreview(container, "highlight").style.backgroundColor).toBe("rgb(231, 244, 236)");
+    expect(getStylePreview(container, "highlight").style.color).toBe("rgb(20, 83, 45)");
   });
 
   it("closes the editor when clicking outside the list and editor", async () => {
@@ -260,6 +312,8 @@ function createDeps(overrides: Partial<OptionsAppDeps> = {}): OptionsAppDeps {
     updateRule: vi.fn(async (id, patch) => createRule({ id, ...patch })),
     deleteRule: vi.fn(async () => undefined),
     toggleRule: vi.fn(async (id) => createRule({ id, enabled: false })),
+    getSettings: vi.fn(async () => DEFAULT_SETTINGS),
+    saveSettings: vi.fn(async (patch) => ({ ...DEFAULT_SETTINGS, ...patch })),
     confirmDelete: vi.fn(() => true),
     alertError: vi.fn(),
     logError: vi.fn(),
@@ -303,6 +357,18 @@ function getForm(container: HTMLElement): HTMLFormElement {
   const form = container.querySelector<HTMLFormElement>("[data-rule-form]");
   if (!form) throw new Error("Missing rule form");
   return form;
+}
+
+function getStyleForm(container: HTMLElement): HTMLFormElement {
+  const form = container.querySelector<HTMLFormElement>("[data-style-form]");
+  if (!form) throw new Error("Missing style form");
+  return form;
+}
+
+function getStylePreview(container: HTMLElement, action: "highlight" | "warn"): HTMLElement {
+  const preview = container.querySelector<HTMLElement>(`[data-style-preview="${action}"]`);
+  if (!preview) throw new Error(`Missing style preview: ${action}`);
+  return preview;
 }
 
 function getEditor(container: HTMLElement): HTMLElement {

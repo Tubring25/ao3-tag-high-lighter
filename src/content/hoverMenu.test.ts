@@ -1,4 +1,5 @@
 import type { ParsedTag, ParsedWork, Rule, Settings } from "../core/types";
+import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
 import { mountHoverMenu, unmountHoverMenu, type HoverMenuOptions } from "./hoverMenu";
 
 describe("hoverMenu", () => {
@@ -43,6 +44,33 @@ describe("hoverMenu", () => {
       "Warn work",
       "Collapse work",
     ]);
+  });
+
+  it("uses custom action labels in the quick-add menu", () => {
+    const work = createWork();
+
+    mountHoverMenu(
+      [work],
+      createSettings({
+        actionStyles: {
+          highlight: {
+            label: "Like",
+            backgroundColor: "#fff4d8",
+            textColor: "#5f3b00",
+          },
+          warn: {
+            label: "Avoid",
+            backgroundColor: "#f4e6e3",
+            textColor: "#990000",
+          },
+        },
+      }),
+      createOptions()
+    );
+    work.tags[0].element.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    getShadowButton()?.click();
+
+    expect(getMenuOptionLabels()).toEqual(["Like tag", "Avoid work", "Collapse work"]);
   });
 
   it("shows the selected tag context in the action menu", () => {
@@ -168,6 +196,7 @@ function createSettings(overrides: Partial<Settings> = {}): Settings {
     showToast: true,
     hideWorkMode: "collapse",
     enableOnWorkDetailPage: true,
+    actionStyles: DEFAULT_ACTION_STYLES,
     ...overrides,
   };
 }

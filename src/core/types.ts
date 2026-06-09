@@ -1,5 +1,7 @@
 export type RuleAction = "highlight" | "warn" | "hideWork";
 
+export type CustomizableRuleAction = Exclude<RuleAction, "hideWork">;
+
 export type MatchMode = "exact" | "contains" | "wildcard";
 
 export type TagCategory = "relationship" | "character" | "freeform" | "all";
@@ -9,6 +11,14 @@ export type ParsedTagCategory = Exclude<TagCategory, "all">;
 export type RuleSource = "manual" | "quickAdd";
 
 export type HideWorkMode = "collapse" | "hide";
+
+export interface RuleActionStyle {
+  label: string;
+  backgroundColor: string;
+  textColor: string;
+}
+
+export type RuleActionStyles = Record<CustomizableRuleAction, RuleActionStyle>;
 
 export interface Rule {
   id: string;
@@ -31,6 +41,7 @@ export interface Settings {
   showToast: boolean;
   hideWorkMode: HideWorkMode;
   enableOnWorkDetailPage: boolean;
+  actionStyles: RuleActionStyles;
 }
 
 export interface ParsedTag {

@@ -186,7 +186,10 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     try {
       const result = deps.matchRules(cachedWorks, cachedRules);
       latestMatchResult = result;
-      deps.renderMatches(cachedWorks, result, { hideWorkMode: cachedSettings.hideWorkMode });
+      deps.renderMatches(cachedWorks, result, {
+        hideWorkMode: cachedSettings.hideWorkMode,
+        actionStyles: cachedSettings.actionStyles,
+      });
     } catch (error) {
       latestMatchResult = null;
       deps.logError(error);
