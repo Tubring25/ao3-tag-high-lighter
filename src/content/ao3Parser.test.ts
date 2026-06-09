@@ -244,6 +244,108 @@ describe("parseAo3Works", () => {
     expect(result[1].tags[0].category).toBe("relationship");
   });
 
+  it("parses tags from AO3 user profile series and bookmark blurbs", () => {
+    document.body.innerHTML = `
+      <ol class="series index group">
+        <li id="series_3164013" class="series blurb group series-3164013 user-12855250" role="article">
+          <ul class="tags commas">
+            <li class="relationships">
+              <a class="tag" href="/tags/A*s*B/works">A/B</a>
+            </li>
+            <li class="freeforms">
+              <a class="tag" href="/tags/Hurt*s*Comfort/works">Hurt/Comfort</a>
+            </li>
+          </ul>
+        </li>
+      </ol>
+      <ol class="bookmark index group">
+        <li id="bookmark_2834251551" class="bookmark blurb group work-64599865 user-6581 user-12855250" role="article">
+          <ul class="tags commas">
+            <li class="characters">
+              <a class="tag" href="/tags/Alice/works">Alice</a>
+            </li>
+            <li class="freeforms">
+              <a class="tag" href="/tags/Slow%20Burn/works">Slow Burn</a>
+            </li>
+          </ul>
+        </li>
+      </ol>
+    `;
+
+    const result = parseAo3Works(document);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual(
+      expect.objectContaining({
+        id: "series_3164013",
+        element: expect.any(HTMLElement),
+      })
+    );
+    expect(result[0].tags).toEqual([
+      expect.objectContaining({
+        id: "series_3164013:relationship:0",
+        text: "A/B",
+        category: "relationship",
+      }),
+      expect.objectContaining({
+        id: "series_3164013:freeform:0",
+        text: "Hurt/Comfort",
+        category: "freeform",
+      }),
+    ]);
+    expect(result[1]).toEqual(
+      expect.objectContaining({
+        id: "bookmark_2834251551",
+        element: expect.any(HTMLElement),
+      })
+    );
+    expect(result[1].tags).toEqual([
+      expect.objectContaining({
+        id: "bookmark_2834251551:character:0",
+        text: "Alice",
+        category: "character",
+      }),
+      expect.objectContaining({
+        id: "bookmark_2834251551:freeform:0",
+        text: "Slow Burn",
+        category: "freeform",
+      }),
+    ]);
+  });
+
+  it("skips nested listing blurbs to avoid duplicate profile bookmark parsing", () => {
+    document.body.innerHTML = `
+      <ol class="bookmark index group">
+        <li id="bookmark_1" class="bookmark blurb group" role="article">
+          <h4>Bookmarked work</h4>
+          <ul class="tags commas">
+            <li class="freeforms">
+              <a class="tag" href="/tags/Fluff/works">Fluff</a>
+            </li>
+          </ul>
+          <ol>
+            <li id="work_1" class="work blurb group">
+              <ul class="tags commas">
+                <li class="freeforms">
+                  <a class="tag" href="/tags/Angst/works">Angst</a>
+                </li>
+              </ul>
+            </li>
+          </ol>
+        </li>
+      </ol>
+    `;
+
+    const result = parseAo3Works(document);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("bookmark_1");
+    expect(result[0].tags).toEqual([
+      expect.objectContaining({ id: "bookmark_1:freeform:0", text: "Fluff" }),
+      expect.objectContaining({ id: "bookmark_1:freeform:1", text: "Angst" }),
+    ]);
+  });
+
   it("skips work blurbs that have no id", () => {
     document.body.innerHTML = `
       <ol class="work index group">
