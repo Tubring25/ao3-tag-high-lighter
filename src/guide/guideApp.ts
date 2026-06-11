@@ -7,56 +7,105 @@ interface DemoTag {
   category: DemoCategory;
 }
 
-interface DemoRule {
+interface MatchModeGuide {
+  label: string;
   pattern: string;
-  action: DemoAction;
-  category: DemoCategory;
-  matchMode: MatchMode;
+  summary: string;
+  examples: readonly string[];
+  misses: readonly string[];
+  bestFor: string;
+}
+
+interface WildcardCase {
+  label: string;
+  pattern: string;
+  examples: readonly string[];
+  misses: readonly string[];
 }
 
 const DEMO_TAGS: readonly DemoTag[] = [
+  { text: "Firefighter Vi", category: "freeform" },
+  { text: "Detective Caitlyn", category: "freeform" },
+  { text: "Enemies to Lovers", category: "freeform" },
+  { text: "More Like Moderately Hostile to Lovers", category: "freeform" },
+  { text: "Simps to Enemies to Lovers", category: "freeform" },
   { text: "Slow Burn", category: "freeform" },
-  { text: "Hurt/Comfort", category: "freeform" },
-  { text: "Major Character Death", category: "freeform" },
-  { text: "Aziraphale/Crowley", category: "relationship" },
-  { text: "Alternate Universe", category: "freeform" },
+  { text: "Gun Violence", category: "freeform" },
+  { text: "Happy Ending", category: "freeform" },
 ];
 
-const QUICK_EXAMPLES: readonly DemoRule[] = [
-  { pattern: "Slow Burn", action: "highlight", category: "freeform", matchMode: "exact" },
-  { pattern: "Hurt/Comfort", action: "warn", category: "freeform", matchMode: "exact" },
-  { pattern: "Major Character Death", action: "hideWork", category: "freeform", matchMode: "exact" },
-];
+const DEMO_WORK_URL = "https://archiveofourown.org/works/40752774/chapters/102115695";
 
 const ACTION_COPY: Record<DemoAction, { label: string; result: string; button: string }> = {
   highlight: {
-    label: "Highlight tag",
-    result: "The matching tag gets a readable color marker.",
+    label: "Highlight",
+    result: "The tag gets a quiet color marker so it is easy to scan.",
     button: "Highlight",
   },
   warn: {
     label: "Warning",
-    result: "The work keeps showing, with a warning bar above the metadata.",
+    result: "The work stays visible, with a warning bar above the metadata.",
     button: "Warn",
   },
   hideWork: {
-    label: "Collapse work",
-    result: "The listing item collapses into a short bar with the matched reason.",
+    label: "Collapse",
+    result: "The work collapses on listing pages and shows the matched reason.",
     button: "Collapse",
   },
 };
+
+const MATCH_MODE_GUIDES: Record<MatchMode, MatchModeGuide> = {
+  exact: {
+    label: "Exact",
+    pattern: "Happy Ending",
+    summary: "Matches the whole AO3 tag only.",
+    examples: ["Happy Ending"],
+    misses: ["Happy Endings", "Angst with a Happy Ending"],
+    bestFor: "Best first choice for copied AO3 tags.",
+  },
+  contains: {
+    label: "Contains",
+    pattern: "Violence",
+    summary: "Matches tags that include this word or phrase.",
+    examples: ["Gun Violence", "depictions of violence"],
+    misses: [],
+    bestFor: "Use for broad themes that appear in many tag names.",
+  },
+  wildcard: {
+    label: "Wildcard",
+    pattern: "*Lovers",
+    summary: "Use * when part of the tag may change.",
+    examples: ["Enemies to Lovers", "Simps to Enemies to Lovers"],
+    misses: ["Slow Burn", "Happy Ending"],
+    bestFor: "Use when the beginning or ending may vary.",
+  },
+};
+
+const WILDCARD_CASES: readonly WildcardCase[] = [
+  {
+    label: "Text before *",
+    pattern: "Enemies*",
+    examples: ["Enemies to Lovers"],
+    misses: ["Former Enemies to Lovers", "Simps to Enemies to Lovers"],
+  },
+  {
+    label: "Text after *",
+    pattern: "*Lovers",
+    examples: ["Enemies to Lovers", "Simps to Enemies to Lovers"],
+    misses: ["Enemies to Lovers-ish", "Lovers to Enemies"],
+  },
+];
 
 export function renderGuideApp(container: HTMLElement): void {
   let selectedTag = DEMO_TAGS[0];
   let selectedAction: DemoAction = "highlight";
   let matchMode: MatchMode = "exact";
-  let createdRules: DemoRule[] = [];
 
   container.textContent = "";
   const shell = document.createElement("main");
   shell.className = "guide-shell";
 
-  shell.append(createHero(), createDemo(), createSteps(), createTips());
+  shell.append(createHero(), createDemo(), createMatchingGuide(), createNextSteps());
   container.appendChild(shell);
 
   function createHero(): HTMLElement {
@@ -69,19 +118,18 @@ export function renderGuideApp(container: HTMLElement): void {
     eyebrow.textContent = "AO3 Tag Highlighter Guide";
 
     const title = document.createElement("h1");
-    title.textContent = "Mark the tags you care about before you open a work.";
+    title.textContent = "See what a tag rule changes.";
 
     const body = document.createElement("p");
     body.className = "guide-lede";
-    body.textContent =
-      "Use rules to highlight favorite tags, show warnings, or collapse works from AO3 listing pages.";
+    body.textContent = "Try the preview, then read the rule basics below.";
 
     copy.append(eyebrow, title, body);
 
     const jump = document.createElement("a");
     jump.className = "guide-primary-link";
     jump.href = "#demo";
-    jump.textContent = "Try the example";
+    jump.textContent = "Try it";
 
     hero.append(copy, jump);
     return hero;
@@ -92,33 +140,34 @@ export function renderGuideApp(container: HTMLElement): void {
     section.id = "demo";
     section.className = "guide-demo";
 
-    const builder = document.createElement("div");
-    builder.className = "guide-builder";
-
-    const title = document.createElement("h2");
-    title.textContent = "Build a sample rule";
-    const hint = document.createElement("p");
-    hint.textContent = "Pick a tag, choose what happens, then add it to the example list.";
-    builder.append(title, hint, createTagPicker(), createActionPicker(), createModePicker(), createCreateButton());
-
     const preview = document.createElement("div");
     preview.className = "guide-preview";
     preview.dataset.guidePreview = "true";
-
-    section.append(builder, preview);
     renderPreview(preview);
+
+    const builder = document.createElement("aside");
+    builder.className = "guide-builder";
+
+    const title = document.createElement("h2");
+    title.textContent = "Controls";
+    const hint = document.createElement("p");
+    hint.textContent = "Adjust the sample rule.";
+    builder.append(title, hint, createTagPicker(), createActionPicker());
+
+    section.append(preview, builder);
     return section;
   }
 
   function createTagPicker(): HTMLElement {
-    const group = createFieldGroup("1", "Choose a tag from the AO3-style work block");
+    const group = createFieldGroup("Tag");
     const tagList = document.createElement("div");
     tagList.className = "guide-tag-list";
 
     for (const tag of DEMO_TAGS) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = tag.text === selectedTag.text ? "guide-tag is-selected" : "guide-tag";
+      button.className =
+        tag.text === selectedTag.text ? `guide-tag is-selected is-${selectedAction}` : "guide-tag";
       button.dataset.demoTag = tag.text;
       button.textContent = tag.text;
       button.addEventListener("click", () => {
@@ -133,16 +182,16 @@ export function renderGuideApp(container: HTMLElement): void {
   }
 
   function createActionPicker(): HTMLElement {
-    const group = createFieldGroup("2", "Choose how matching works should change");
+    const group = createFieldGroup("Action");
     const actions = document.createElement("div");
-    actions.className = "guide-action-grid";
+    actions.className = "guide-segmented";
 
     for (const action of ["highlight", "warn", "hideWork"] as const) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = action === selectedAction ? "guide-action-card is-selected" : "guide-action-card";
+      button.className = action === selectedAction ? "is-selected" : "";
       button.dataset.demoAction = action;
-      button.innerHTML = `<strong>${ACTION_COPY[action].label}</strong><span>${ACTION_COPY[action].result}</span>`;
+      button.textContent = ACTION_COPY[action].label;
       button.addEventListener("click", () => {
         selectedAction = action;
         rerenderDemo();
@@ -154,8 +203,16 @@ export function renderGuideApp(container: HTMLElement): void {
     return group;
   }
 
-  function createModePicker(): HTMLElement {
-    const group = createFieldGroup("3", "Set how strict the match should be");
+  function createMatchPicker(): HTMLElement {
+    const group = document.createElement("section");
+    group.className = "guide-field-group guide-match-field-group";
+
+    const sidebar = document.createElement("div");
+    sidebar.className = "guide-match-mode-sidebar";
+
+    const heading = document.createElement("h3");
+    heading.textContent = "Match mode";
+
     const modes = document.createElement("div");
     modes.className = "guide-segmented";
 
@@ -164,35 +221,90 @@ export function renderGuideApp(container: HTMLElement): void {
       button.type = "button";
       button.className = mode === matchMode ? "is-selected" : "";
       button.dataset.demoMatchMode = mode;
-      button.textContent = mode === "exact" ? "Exact" : mode === "contains" ? "Contains" : "Wildcard";
+      button.textContent = MATCH_MODE_GUIDES[mode].label;
       button.addEventListener("click", () => {
         matchMode = mode;
         rerenderDemo();
+        rerenderMatchingGuide();
       });
       modes.appendChild(button);
     }
 
-    group.appendChild(modes);
+    sidebar.append(heading, modes);
+    group.append(sidebar, createMatchModePreview());
     return group;
   }
 
-  function createCreateButton(): HTMLElement {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "guide-create-rule";
-    button.dataset.createDemoRule = "true";
-    button.textContent = "Add example rule";
-    button.addEventListener("click", () => {
-      const nextRule: DemoRule = {
-        pattern: selectedTag.text,
-        category: selectedTag.category,
-        action: selectedAction,
-        matchMode,
-      };
-      createdRules = [nextRule, ...createdRules.filter((rule) => rule.pattern !== nextRule.pattern)].slice(0, 4);
-      rerenderDemo();
-    });
-    return button;
+  function createMatchModePreview(): HTMLElement {
+    const guide = MATCH_MODE_GUIDES[matchMode];
+    const preview = document.createElement("div");
+    preview.className = "guide-match-preview";
+    preview.dataset.matchModePreview = matchMode;
+
+    const summary = document.createElement("p");
+    summary.className = "guide-field-hint";
+    summary.textContent = guide.summary;
+
+    const bestFor = document.createElement("p");
+    bestFor.className = "guide-match-best";
+    bestFor.textContent = guide.bestFor;
+
+    if (matchMode !== "wildcard") {
+      const pattern = document.createElement("p");
+      pattern.className = "guide-match-pattern";
+      pattern.innerHTML = `<span>Pattern</span><code>${guide.pattern}</code>`;
+      preview.appendChild(pattern);
+    }
+    preview.appendChild(summary);
+    if (matchMode === "wildcard") {
+      const cases = document.createElement("div");
+      cases.className = "guide-wildcard-cases";
+      for (const wildcardCase of WILDCARD_CASES) {
+        cases.appendChild(createWildcardCase(wildcardCase));
+      }
+      preview.appendChild(cases);
+    } else {
+      preview.appendChild(createMatchSampleRow("Matches", guide.examples, true));
+      if (guide.misses.length > 0) {
+        preview.appendChild(createMatchSampleRow("Skips", guide.misses, false));
+      }
+    }
+    preview.appendChild(bestFor);
+    return preview;
+  }
+
+  function createWildcardCase(wildcardCase: WildcardCase): HTMLElement {
+    const caseBlock = document.createElement("section");
+    caseBlock.className = "guide-wildcard-case";
+
+    const pattern = document.createElement("p");
+    pattern.className = "guide-match-pattern";
+    pattern.innerHTML = `<span>${wildcardCase.label}</span><code>${wildcardCase.pattern}</code>`;
+
+    caseBlock.append(pattern, createMatchSampleRow("Matches", wildcardCase.examples, true));
+    if (wildcardCase.misses.length > 0) {
+      caseBlock.appendChild(createMatchSampleRow("Skips", wildcardCase.misses, false));
+    }
+    return caseBlock;
+  }
+
+  function createMatchSampleRow(label: string, tags: readonly string[], isMatch: boolean): HTMLElement {
+    const row = document.createElement("div");
+    row.className = "guide-match-sample-row";
+
+    const rowLabel = document.createElement("span");
+    rowLabel.textContent = label;
+
+    const list = document.createElement("ul");
+    for (const tag of tags) {
+      const item = document.createElement("li");
+      item.className = isMatch ? "is-match" : "is-miss";
+      item.textContent = tag;
+      list.appendChild(item);
+    }
+
+    row.append(rowLabel, list);
+    return row;
   }
 
   function renderPreview(preview: HTMLElement): void {
@@ -201,7 +313,7 @@ export function renderGuideApp(container: HTMLElement): void {
     const top = document.createElement("div");
     top.className = "guide-preview-top";
     const label = document.createElement("p");
-    label.textContent = "Live example";
+    label.textContent = "Live AO3-style preview";
     const active = document.createElement("strong");
     active.dataset.activeRuleLabel = "true";
     active.textContent = `${ACTION_COPY[selectedAction].button}: ${selectedTag.text}`;
@@ -215,7 +327,7 @@ export function renderGuideApp(container: HTMLElement): void {
     banner.textContent = getBannerText();
 
     const heading = document.createElement("h3");
-    heading.innerHTML = `<a href="#demo">The Cartographer's Shortcut</a> <span>by samplewriter</span>`;
+    heading.innerHTML = `<a href="${DEMO_WORK_URL}">Hotshot</a> <span>by SarcastCity</span>`;
 
     const tags = document.createElement("p");
     tags.className = "guide-work-tags";
@@ -231,49 +343,51 @@ export function renderGuideApp(container: HTMLElement): void {
       tags.append(tagElement, " ");
     }
 
-    const summary = document.createElement("p");
-    summary.className = "guide-summary";
-    summary.textContent =
-      "A compact listing-page preview showing how the selected rule changes an AO3 work before you open it.";
+    const result = document.createElement("p");
+    result.className = "guide-result-copy";
+    result.textContent = ACTION_COPY[selectedAction].result;
 
     const meta = document.createElement("dl");
     meta.className = "guide-meta";
-    meta.innerHTML = "<dt>Words</dt><dd>24,180</dd><dt>Chapters</dt><dd>8/8</dd><dt>Kudos</dt><dd>1,204</dd>";
+    meta.innerHTML = "<dt>Words</dt><dd>242,931</dd><dt>Chapters</dt><dd>50/50</dd><dt>Kudos</dt><dd>24,330</dd>";
 
     if (selectedAction !== "highlight") work.appendChild(banner);
-    work.append(heading, tags, summary, meta);
-
-    const rules = document.createElement("div");
-    rules.className = "guide-rule-list";
-    const rulesTitle = document.createElement("h3");
-    rulesTitle.textContent = "Example rules";
-    rules.appendChild(rulesTitle);
-
-    const list = document.createElement("ul");
-    const rulesToShow = createdRules.length > 0 ? createdRules : QUICK_EXAMPLES;
-    for (const rule of rulesToShow) {
-      const item = document.createElement("li");
-      item.innerHTML = `<strong>${ACTION_COPY[rule.action].button}</strong><span>${rule.pattern} · ${rule.matchMode} · ${rule.category}</span>`;
-      list.appendChild(item);
-    }
-    rules.appendChild(list);
-
-    preview.append(top, work, rules);
+    work.append(heading, tags, result, meta);
+    preview.append(top, work);
   }
 
-  function createSteps(): HTMLElement {
+  function createMatchingGuide(): HTMLElement {
     const section = document.createElement("section");
-    section.className = "guide-steps";
+    section.className = "guide-matching";
+
+    const header = document.createElement("div");
+    header.className = "guide-section-header";
+    const title = document.createElement("h2");
+    title.textContent = "Matching modes";
+    const body = document.createElement("p");
+    body.textContent = "Choose how closely a rule pattern should match AO3 tag text.";
+    header.append(title, body);
+
+    const control = document.createElement("div");
+    control.className = "guide-match-mode-control";
+    control.appendChild(createMatchPicker());
+
+    section.append(header, control);
+    return section;
+  }
+
+  function createNextSteps(): HTMLElement {
+    const section = document.createElement("section");
+    section.className = "guide-next";
 
     const title = document.createElement("h2");
-    title.textContent = "Use it on AO3";
+    title.textContent = "What to do next";
     section.appendChild(title);
 
     const steps = [
-      ["Hover a tag", "On AO3 listing pages, move your cursor over a relationship, character, or freeform tag."],
-      ["Click +", "The quick-add menu opens for that exact tag. The selected tag stays locked while the menu is open."],
-      ["Choose an action", "Highlight a tag, mark the work with a warning, or collapse the work from listings."],
-      ["Adjust later", "Open Manage rules to edit patterns, match modes, categories, colors, and paused rules."],
+      ["On AO3", "Hover a tag, click +, then choose Highlight, Warning, or Collapse."],
+      ["Start safe", "Use Exact for copied AO3 tags. Try Contains or Wildcard only when you need broader matches."],
+      ["Tune later", "Use Manage rules to edit colors, pause rules, or change match modes."],
     ] as const;
 
     const list = document.createElement("ol");
@@ -286,36 +400,11 @@ export function renderGuideApp(container: HTMLElement): void {
     return section;
   }
 
-  function createTips(): HTMLElement {
-    const section = document.createElement("section");
-    section.className = "guide-tips";
-
-    const title = document.createElement("h2");
-    title.textContent = "Good first rules";
-    const cards = document.createElement("div");
-    cards.className = "guide-tip-grid";
-
-    const tips = [
-      ["Start exact", "Use Exact for tags copied from AO3. It avoids surprising matches."],
-      ["Use contains carefully", "Contains works well for broad ideas like Vampire or Time Travel."],
-      ["Collapse only hard skips", "Collapse hides listing content until you expand it, so reserve it for tags you always avoid."],
-    ] as const;
-
-    for (const [tipTitle, text] of tips) {
-      const card = document.createElement("article");
-      card.innerHTML = `<h3>${tipTitle}</h3><p>${text}</p>`;
-      cards.appendChild(card);
-    }
-
-    section.append(title, cards);
-    return section;
-  }
-
-  function createFieldGroup(number: string, label: string): HTMLElement {
+  function createFieldGroup(label: string): HTMLElement {
     const group = document.createElement("section");
     group.className = "guide-field-group";
     const heading = document.createElement("h3");
-    heading.innerHTML = `<span>${number}</span>${label}`;
+    heading.textContent = label;
     group.appendChild(heading);
     return group;
   }
@@ -324,6 +413,12 @@ export function renderGuideApp(container: HTMLElement): void {
     const demo = shell.querySelector(".guide-demo");
     if (!demo) return;
     demo.replaceWith(createDemo());
+  }
+
+  function rerenderMatchingGuide(): void {
+    const matching = shell.querySelector(".guide-matching");
+    if (!matching) return;
+    matching.replaceWith(createMatchingGuide());
   }
 
   function getTagClassName(tag: DemoTag): string {
