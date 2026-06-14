@@ -1,5 +1,6 @@
 import type {
   CustomizableRuleAction,
+  LanguagePreference,
   MatchMode,
   Rule,
   RuleAction,
@@ -7,8 +8,16 @@ import type {
   Settings,
   TagCategory,
 } from "../core/types";
-import { ACTION_STYLE_PRESETS, getActionLabel } from "../core/actionStyles";
+import { ACTION_STYLE_PRESETS } from "../core/actionStyles";
 import { LOG_PREFIX } from "../shared/constants";
+import {
+  getLocalizedActionLabel,
+  getLocalizedCustomizableActionLabel,
+  getLocalizedPresetName,
+  applyDocumentLanguage,
+  setLanguagePreference,
+  t,
+} from "../shared/i18n";
 import {
   addRule as defaultAddRule,
   deleteRule as defaultDeleteRule,
@@ -60,6 +69,8 @@ export async function renderOptionsApp(
   let editorOpen = false;
   let ruleListScrollTop = 0;
 
+  setLanguagePreference(settings.languagePreference);
+  applyDocumentLanguage();
   container.addEventListener("click", closeEditorOnOutsideClick);
   renderPage();
 
@@ -87,21 +98,21 @@ export async function renderOptionsApp(
 
     const eyebrow = document.createElement("p");
     eyebrow.className = "options-eyebrow";
-    eyebrow.textContent = "AO3 Tag Highlighter";
+    eyebrow.textContent = t("optionsEyebrow");
 
     const title = document.createElement("h1");
-    title.textContent = "Rules manager";
+    title.textContent = t("optionsTitle");
 
     const subtitle = document.createElement("p");
     subtitle.className = "options-subtitle";
-    subtitle.textContent = "Manage how AO3 tags are highlighted, marked, or collapsed.";
+    subtitle.textContent = t("optionsSubtitle");
 
     const copy = document.createElement("div");
     copy.append(eyebrow, title, subtitle);
 
     const count = document.createElement("p");
     count.className = "options-count";
-    count.textContent = `${allRules.length} rules`;
+    count.textContent = t("optionsRulesCount", [allRules.length]);
     count.dataset.optionsCount = "true";
 
     header.append(copy, count);
@@ -114,14 +125,14 @@ export async function renderOptionsApp(
 
     const brand = document.createElement("div");
     brand.className = "options-brand";
-    brand.innerHTML = `<strong>AO3 Tag<br>Highlighter</strong><span>Rule settings</span>`;
+    brand.innerHTML = `<strong>AO3 Tag<br>Highlighter</strong><span>${t("optionsRuleSettings")}</span>`;
 
     const nav = document.createElement("nav");
     nav.className = "options-nav";
     const navItems: Array<[string, StatusFilter, string]> = [
-      ["Rules", "all", `${allRules.length}`],
-      ["Enabled", "enabled", `${allRules.filter((rule) => rule.enabled).length}`],
-      ["Paused", "disabled", `${allRules.filter((rule) => !rule.enabled).length}`],
+      [t("optionsRules"), "all", `${allRules.length}`],
+      [t("optionsNavEnabled"), "enabled", `${allRules.filter((rule) => rule.enabled).length}`],
+      [t("optionsNavPaused"), "disabled", `${allRules.filter((rule) => !rule.enabled).length}`],
     ];
     for (const [label, status, value] of navItems) {
       const item = document.createElement("button");
@@ -140,10 +151,39 @@ export async function renderOptionsApp(
 
     const note = document.createElement("p");
     note.className = "options-sidebar-note";
-    note.textContent = "Saved in this browser.";
+    note.textContent = t("optionsSavedInBrowser");
 
-    sidebar.append(brand, nav, note);
+    sidebar.append(brand, nav, createLanguageSetting(), note);
     return sidebar;
+  }
+
+  function createLanguageSetting(): HTMLElement {
+    const control = document.createElement("label");
+    control.className = "options-language-control";
+    control.dataset.optionsSidebarControl = "true";
+
+    const label = document.createElement("span");
+    label.className = "options-language-label";
+    label.textContent = t("languageLabel");
+
+    const select = document.createElement("select");
+    select.dataset.optionsLanguage = "true";
+    appendOption(select, "auto", t("languageAuto"));
+    appendOption(select, "en", t("languageEnglish"));
+    appendOption(select, "zh_CN", t("languageChineseSimplified"));
+    select.value = settings.languagePreference;
+    select.addEventListener("change", () => {
+      const languagePreference = select.value as LanguagePreference;
+      void withStorageErrorHandling(async () => {
+        settings = await deps.saveSettings({ languagePreference });
+        setLanguagePreference(settings.languagePreference);
+        applyDocumentLanguage();
+        renderPage();
+      });
+    });
+
+    control.append(label, select);
+    return control;
   }
 
   function createManagerPanel(): HTMLElement {
@@ -155,9 +195,9 @@ export async function renderOptionsApp(
 
     const copy = document.createElement("div");
     const title = document.createElement("h2");
-    title.textContent = "Rules";
+    title.textContent = t("optionsRules");
     const subtitle = document.createElement("p");
-    subtitle.textContent = "Find and update your rules.";
+    subtitle.textContent = t("optionsRulesSubtitle");
     copy.append(title, subtitle);
 
     const addButton = document.createElement("button");
@@ -165,7 +205,7 @@ export async function renderOptionsApp(
     addButton.className = "options-add-button";
     addButton.dataset.optionsAdd = "true";
     addButton.dataset.optionsEditorActivator = "true";
-    addButton.textContent = "+ Add rule";
+    addButton.textContent = t("optionsAddRule");
     addButton.addEventListener("click", openCreateEditor);
 
     const actionGroup = document.createElement("div");
@@ -176,14 +216,14 @@ export async function renderOptionsApp(
     guideLink.href = "guide.html";
     guideLink.target = "_blank";
     guideLink.rel = "noreferrer";
-    guideLink.textContent = "User guide";
+    guideLink.textContent = t("optionsUserGuide");
 
     const stylesButton = document.createElement("button");
     stylesButton.type = "button";
     stylesButton.className = "options-style-button";
     stylesButton.dataset.optionsStyles = "true";
     stylesButton.dataset.optionsEditorActivator = "true";
-    stylesButton.textContent = "Tag styles";
+    stylesButton.textContent = t("optionsTagStyles");
     stylesButton.addEventListener("click", openStylesEditor);
 
     actionGroup.append(guideLink, stylesButton, addButton);
@@ -204,7 +244,7 @@ export async function renderOptionsApp(
 
     const search = document.createElement("input");
     search.type = "search";
-    search.placeholder = "Search tags...";
+    search.placeholder = t("optionsSearchPlaceholder");
     search.value = filterText;
     search.dataset.optionsSearch = "true";
     search.addEventListener("input", () => {
@@ -214,7 +254,7 @@ export async function renderOptionsApp(
 
     const actionFilter = document.createElement("select");
     actionFilter.dataset.optionsActionFilter = "true";
-    appendOption(actionFilter, "all", "All actions");
+    appendOption(actionFilter, "all", t("optionsAllActions"));
     for (const action of ACTIONS) appendOption(actionFilter, action, formatActionLabel(action));
     actionFilter.value = filterAction;
     actionFilter.addEventListener("change", () => {
@@ -224,7 +264,7 @@ export async function renderOptionsApp(
 
     const categoryFilter = document.createElement("select");
     categoryFilter.dataset.optionsCategoryFilter = "true";
-    appendOption(categoryFilter, "all-categories", "All categories");
+    appendOption(categoryFilter, "all-categories", t("optionsAllCategories"));
     for (const category of CATEGORIES) appendOption(categoryFilter, category, formatCategory(category));
     categoryFilter.value = filterCategory;
     categoryFilter.addEventListener("change", () => {
@@ -234,9 +274,9 @@ export async function renderOptionsApp(
 
     const statusFilter = document.createElement("select");
     statusFilter.dataset.optionsStatusFilter = "true";
-    appendOption(statusFilter, "all", "All status");
-    appendOption(statusFilter, "enabled", "Enabled");
-    appendOption(statusFilter, "disabled", "Paused");
+    appendOption(statusFilter, "all", t("optionsAllStatus"));
+    appendOption(statusFilter, "enabled", t("labelEnabled"));
+    appendOption(statusFilter, "disabled", t("labelPaused"));
     statusFilter.value = filterStatus;
     statusFilter.addEventListener("change", () => {
       filterStatus = statusFilter.value as StatusFilter;
@@ -284,7 +324,14 @@ export async function renderOptionsApp(
 
     const header = document.createElement("div");
     header.className = "options-table-header";
-    for (const label of ["Pattern", "Action", "Match", "Category", "Status", ""] as const) {
+    for (const label of [
+      t("optionsTablePattern"),
+      t("optionsTableAction"),
+      t("optionsTableMatch"),
+      t("optionsTableCategory"),
+      t("optionsTableStatus"),
+      "",
+    ] as const) {
       const cell = document.createElement("span");
       cell.textContent = label;
       header.appendChild(cell);
@@ -301,18 +348,18 @@ export async function renderOptionsApp(
     empty.className = "options-empty";
 
     const title = document.createElement("h3");
-    title.textContent = allRules.length === 0 ? "No rules yet" : "No matching rules";
+    title.textContent = allRules.length === 0 ? t("optionsNoRulesTitle") : t("optionsNoMatchingRulesTitle");
 
     const copy = document.createElement("p");
     copy.textContent =
       allRules.length === 0
-        ? "Add a tag rule to highlight, warn, or collapse works."
-        : "Try another search or clear filters.";
+        ? t("optionsNoRulesBody")
+        : t("optionsNoMatchingRulesBody");
 
     const action = document.createElement("button");
     action.type = "button";
     action.className = "options-empty-action";
-    action.textContent = allRules.length === 0 ? "Add rule" : "Clear filters";
+    action.textContent = allRules.length === 0 ? t("optionsAddRule").replace("+ ", "") : t("optionsClearFilters");
     if (allRules.length === 0) action.dataset.optionsEditorActivator = "true";
     action.addEventListener("click", () => {
       rememberRuleListScroll();
@@ -356,7 +403,7 @@ export async function renderOptionsApp(
     row.append(
       createPatternCell(rule.pattern),
       createBadge("rule-badge", rule.action, formatActionLabel(rule.action)),
-      createCell("rule-meta", rule.matchMode),
+      createCell("rule-meta", formatMatchMode(rule.matchMode)),
       createCell("rule-meta", formatCategory(rule.category)),
       createStatusToggle(rule),
       createRowActions(rule)
@@ -403,7 +450,7 @@ export async function renderOptionsApp(
     const toggle = document.createElement("input");
     toggle.type = "checkbox";
     toggle.checked = rule.enabled;
-    toggle.title = rule.enabled ? "Disable rule" : "Enable rule";
+    toggle.title = rule.enabled ? t("optionsDisableRule") : t("optionsEnableRule");
     toggle.dataset.ruleAction = "toggle";
     toggle.dataset.ruleId = rule.id;
     toggle.addEventListener("change", () => {
@@ -415,7 +462,7 @@ export async function renderOptionsApp(
     });
 
     const text = document.createElement("span");
-    text.textContent = rule.enabled ? "On" : "Paused";
+    text.textContent = rule.enabled ? t("labelOn") : t("labelPaused");
     label.append(toggle, text);
     return label;
   }
@@ -424,11 +471,11 @@ export async function renderOptionsApp(
     const controls = document.createElement("div");
     controls.className = "rule-actions";
 
-    const edit = createActionButton("Edit", rule, "edit");
+    const edit = createActionButton(t("optionsEdit"), rule, "edit");
     edit.dataset.optionsEditorActivator = "true";
     edit.addEventListener("click", () => openEditEditor(rule.id));
 
-    const remove = createActionButton("Delete", rule, "delete");
+    const remove = createActionButton(t("optionsDelete"), rule, "delete");
     remove.addEventListener("click", () => {
       void withStorageErrorHandling(async () => {
         if (!deps.confirmDelete(rule)) return;
@@ -467,27 +514,27 @@ export async function renderOptionsApp(
     const rule = isEditing ? selectedRule : null;
 
     const title = document.createElement("h2");
-    title.textContent = isEditing && rule ? `Editing “${rule.pattern}”` : "New rule";
+    title.textContent = isEditing && rule ? t("optionsEditingRule", [rule.pattern]) : t("optionsNewRule");
 
     const mode = document.createElement("p");
     mode.className = "options-editor-mode";
-    mode.textContent = isEditing ? "Edit selected rule" : "Create rule";
+    mode.textContent = isEditing ? t("optionsEditSelectedRule") : t("optionsCreateRule");
 
     const hint = document.createElement("p");
     hint.className = "options-editor-hint";
     hint.textContent = isEditing
-      ? "Save changes to update matching AO3 pages."
-      : "Choose a tag and what should happen.";
+      ? t("optionsEditHint")
+      : t("optionsCreateHint");
 
     const form = document.createElement("form");
     form.dataset.ruleForm = "true";
 
     form.append(
-      createTextField("pattern", "Pattern", rule?.pattern ?? ""),
-      createSelectField("action", "Action", ACTIONS, rule?.action ?? "highlight", formatActionLabel),
-      createSelectField("matchMode", "Match mode", MATCH_MODES, rule?.matchMode ?? "exact"),
-      createSelectField("category", "Category", CATEGORIES, rule?.category ?? "all", formatCategory),
-      createCheckboxField("enabled", "Enabled", rule?.enabled ?? true)
+      createTextField("pattern", t("optionsFieldPattern"), rule?.pattern ?? ""),
+      createSelectField("action", t("optionsFieldAction"), ACTIONS, rule?.action ?? "highlight", formatActionLabel),
+      createSelectField("matchMode", t("optionsFieldMatchMode"), MATCH_MODES, rule?.matchMode ?? "exact", formatMatchMode),
+      createSelectField("category", t("optionsFieldCategory"), CATEGORIES, rule?.category ?? "all", formatCategory),
+      createCheckboxField("enabled", t("labelEnabled"), rule?.enabled ?? true)
     );
 
     const footer = document.createElement("div");
@@ -495,7 +542,7 @@ export async function renderOptionsApp(
 
     const submit = document.createElement("button");
     submit.type = "submit";
-    submit.textContent = isEditing ? "Save" : "Create";
+    submit.textContent = isEditing ? t("optionsSave") : t("optionsCreate");
 
     footer.appendChild(submit);
     form.appendChild(footer);
@@ -530,14 +577,14 @@ export async function renderOptionsApp(
 
     const mode = document.createElement("p");
     mode.className = "options-editor-mode";
-    mode.textContent = "Tag appearance";
+    mode.textContent = t("optionsTagAppearance");
 
     const title = document.createElement("h2");
-    title.textContent = "Tag styles";
+    title.textContent = t("optionsTagStyles");
 
     const hint = document.createElement("p");
     hint.className = "options-editor-hint";
-    hint.textContent = "These styles apply to all rules with this action.";
+    hint.textContent = t("optionsTagStylesHint");
 
     const form = document.createElement("form");
     form.dataset.styleForm = "true";
@@ -551,7 +598,7 @@ export async function renderOptionsApp(
 
     const submit = document.createElement("button");
     submit.type = "submit";
-    submit.textContent = "Save";
+    submit.textContent = t("optionsSave");
     footer.appendChild(submit);
     form.appendChild(footer);
 
@@ -582,12 +629,12 @@ export async function renderOptionsApp(
     header.className = "style-editor-row-header";
 
     const title = document.createElement("h3");
-    title.textContent = action === "highlight" ? "Highlight" : "Warning";
+    title.textContent = action === "highlight" ? t("actionHighlight") : t("actionWarning");
 
     const preview = document.createElement("span");
     preview.className = "style-preview";
     preview.dataset.stylePreview = action;
-    preview.textContent = style.label;
+    preview.textContent = getLocalizedCustomizableActionLabel(action, style);
     preview.style.backgroundColor = style.backgroundColor;
     preview.style.color = style.textColor;
 
@@ -596,9 +643,9 @@ export async function renderOptionsApp(
     const fields = document.createElement("div");
     fields.className = "style-editor-fields";
     fields.append(
-      createStyleInput(`${action}Label`, "Label", "text", style.label),
-      createStyleInput(`${action}BackgroundColor`, "BG", "color", style.backgroundColor),
-      createStyleInput(`${action}TextColor`, "Text", "color", style.textColor)
+      createStyleInput(`${action}Label`, t("optionsStyleLabel"), "text", getLocalizedCustomizableActionLabel(action, style)),
+      createStyleInput(`${action}BackgroundColor`, t("optionsStyleBackground"), "color", style.backgroundColor),
+      createStyleInput(`${action}TextColor`, t("optionsStyleText"), "color", style.textColor)
     );
 
     row.append(header, fields);
@@ -612,7 +659,7 @@ export async function renderOptionsApp(
 
     const label = document.createElement("p");
     label.className = "style-preset-label";
-    label.textContent = "Recommended palettes";
+    label.textContent = t("optionsRecommendedPalettes");
 
     const options = document.createElement("div");
     options.className = "style-preset-options";
@@ -624,7 +671,7 @@ export async function renderOptionsApp(
       button.dataset.stylePresetAction = action;
       button.dataset.backgroundColor = preset.backgroundColor;
       button.dataset.textColor = preset.textColor;
-      button.textContent = preset.name;
+      button.textContent = getLocalizedPresetName(preset.name);
       button.style.backgroundColor = preset.backgroundColor;
       button.style.color = preset.textColor;
       options.appendChild(button);
@@ -640,14 +687,14 @@ export async function renderOptionsApp(
 
     const copy = document.createElement("div");
     const title = document.createElement("h3");
-    title.textContent = "Collapse work";
+    title.textContent = t("actionCollapseWork");
     const hint = document.createElement("p");
-    hint.textContent = "Always uses the collapse style.";
+    hint.textContent = t("optionsCollapseAlwaysFixed");
     copy.append(title, hint);
 
     const locked = document.createElement("span");
     locked.className = "style-locked-label";
-    locked.textContent = "Locked";
+    locked.textContent = t("optionsLocked");
 
     row.append(copy, locked);
     return row;
@@ -674,7 +721,7 @@ export async function renderOptionsApp(
       await operation();
     } catch (error) {
       deps.logError(error);
-      deps.alertError(error instanceof Error ? error.message : "Operation failed");
+      deps.alertError(error instanceof Error ? error.message : t("optionsOperationFailed"));
       renderPage();
     }
   }
@@ -714,7 +761,7 @@ export async function renderOptionsApp(
   }
 
   function formatActionLabel(action: RuleAction): string {
-    return getActionLabel(action, settings.actionStyles);
+    return getLocalizedActionLabel(action, settings.actionStyles);
   }
 
   function closeEditorOnOutsideClick(event: MouseEvent): void {
@@ -723,7 +770,8 @@ export async function renderOptionsApp(
     if (
       target.closest("[data-options-editor]") ||
       target.closest("[data-options-rule-list]") ||
-      target.closest("[data-options-editor-activator]")
+      target.closest("[data-options-editor-activator]") ||
+      target.closest("[data-options-sidebar-control]")
     ) {
       return;
     }
@@ -869,8 +917,16 @@ function appendOption(select: HTMLSelectElement, value: string, label: string): 
 }
 
 function formatCategory(category: TagCategory): string {
-  if (category === "all") return "Any category";
-  return category;
+  if (category === "all") return t("categoryAny");
+  if (category === "relationship") return t("categoryRelationship");
+  if (category === "character") return t("categoryCharacter");
+  return t("categoryFreeform");
+}
+
+function formatMatchMode(matchMode: MatchMode): string {
+  if (matchMode === "exact") return t("labelExact");
+  if (matchMode === "contains") return t("labelContains");
+  return t("labelWildcard");
 }
 
 function createRealDeps(): OptionsAppDeps {
@@ -882,7 +938,7 @@ function createRealDeps(): OptionsAppDeps {
     toggleRule: defaultToggleRule,
     getSettings: defaultGetSettings,
     saveSettings: defaultSaveSettings,
-    confirmDelete: (rule) => window.confirm(`Delete rule "${rule.pattern}"?`),
+    confirmDelete: (rule) => window.confirm(t("optionsDeleteConfirm", [rule.pattern])),
     alertError: (message) => window.alert(message),
     logError: (error) => {
       console.error(`${LOG_PREFIX} Options error:`, error);

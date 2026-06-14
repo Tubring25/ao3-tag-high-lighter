@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showToast: true,
   hideWorkMode: "collapse",
   enableOnWorkDetailPage: true,
+  languagePreference: "auto",
   actionStyles: DEFAULT_ACTION_STYLES,
 };
 
@@ -62,6 +63,15 @@ export function validateSettingsInput(input: Partial<Settings>): void {
   validateBooleanField(input, "showToast");
   validateBooleanField(input, "enableOnWorkDetailPage");
   validateActionStylesInput(input.actionStyles);
+
+  if (
+    input.languagePreference !== undefined &&
+    input.languagePreference !== "auto" &&
+    input.languagePreference !== "en" &&
+    input.languagePreference !== "zh_CN"
+  ) {
+    throw new Error(`Invalid languagePreference: ${String(input.languagePreference)}`);
+  }
 
   if (
     input.hideWorkMode !== undefined &&

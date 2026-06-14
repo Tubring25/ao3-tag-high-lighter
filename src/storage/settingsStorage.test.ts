@@ -141,6 +141,9 @@ describe("settingsStorage", () => {
       validateSettingsInput({ enableOnWorkDetailPage: "yes" as unknown as boolean })
     ).toThrow("Invalid enableOnWorkDetailPage: expected boolean");
     expect(() =>
+      validateSettingsInput({ languagePreference: "fr" as Settings["languagePreference"] })
+    ).toThrow("Invalid languagePreference: fr");
+    expect(() =>
       validateSettingsInput({
         actionStyles: {
           ...DEFAULT_SETTINGS.actionStyles,

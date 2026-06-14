@@ -1,9 +1,21 @@
+:root {
+  --ao3th-font-ui: "Funnel Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", Verdana, Geneva, sans-serif;
+  --ao3th-font-display: Georgia, "Songti SC", "Noto Serif SC", "SimSun", serif;
+  --ao3th-font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", monospace;
+}
+
+:lang(zh) {
+  --ao3th-font-ui: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Heiti SC", sans-serif;
+  --ao3th-font-display: var(--ao3th-font-ui);
+  --ao3th-font-mono: var(--ao3th-font-ui);
+}
+
 body {
   margin: 0;
   min-height: 100vh;
   background: #f7f4ee;
   color: #111111;
-  font-family: "Funnel Sans", Verdana, Geneva, sans-serif;
+  font-family: var(--ao3th-font-ui);
 }
 
 button,
@@ -39,7 +51,7 @@ button {
 
 .options-eyebrow {
   color: #990000;
-  font: 700 12px/1.3 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font: 700 12px/1.3 var(--ao3th-font-mono);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -47,7 +59,7 @@ button {
 .options-header h1 {
   margin: 4px 0 4px;
   color: #111111;
-  font: 700 clamp(34px, 5vw, 52px)/0.95 Georgia, "Times New Roman", serif;
+  font: 700 clamp(34px, 5vw, 52px)/0.95 var(--ao3th-font-display);
 }
 
 .options-subtitle {
@@ -59,7 +71,7 @@ button {
 
 .options-count {
   color: #4b3f35;
-  font: 13px/1.35 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font: 13px/1.35 var(--ao3th-font-mono);
   white-space: nowrap;
 }
 
@@ -84,7 +96,7 @@ button {
 .options-brand strong {
   display: block;
   color: #111111;
-  font: 700 18px/1.05 Georgia, "Times New Roman", serif;
+  font: 700 18px/1.05 var(--ao3th-font-display);
 }
 
 .options-brand span {
@@ -131,14 +143,47 @@ button {
 }
 
 .options-nav-item strong {
-  font: 600 12px/1 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font: 600 12px/1 var(--ao3th-font-mono);
 }
 
 .options-sidebar-note {
-  margin: auto 0 0;
+  margin: 0;
   color: #6b6259;
   font-size: 12px;
   line-height: 1.45;
+}
+
+.options-language-control {
+  display: grid;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid #d8d1c8;
+}
+
+.options-language-label {
+  color: #4b3f35;
+  font: 700 11px/1.3 var(--ao3th-font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.options-language-control select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid #d8d1c8;
+  border-radius: 0;
+  background: #ffffff;
+  color: #111111;
+  padding: 0 9px;
+}
+
+.options-language-control select:hover,
+.options-language-control select:focus-visible {
+  background: #fbf7f2;
+  border-color: #990000;
+  outline: 0;
 }
 
 .options-manager {
@@ -165,7 +210,7 @@ button {
 .options-editor h2 {
   margin: 0;
   color: #111111;
-  font: 700 24px/1.1 Georgia, "Times New Roman", serif;
+  font: 700 24px/1.1 var(--ao3th-font-display);
 }
 
 .options-manager-top p,
@@ -301,7 +346,7 @@ button {
   border-bottom: 1px solid #d8d1c8;
   background: #f7f4ee;
   color: #5f5146;
-  font: 600 11px/1.3 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font: 600 11px/1.3 var(--ao3th-font-mono);
   text-transform: uppercase;
 }
 
@@ -336,7 +381,7 @@ button {
 
 .rule-pattern {
   color: #111111;
-  font: 600 13px/1.35 "Funnel Sans", Verdana, Geneva, sans-serif;
+  font: 600 13px/1.35 var(--ao3th-font-ui);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -351,7 +396,7 @@ button {
   width: fit-content;
   padding: 3px 7px;
   color: #111111;
-  font: 600 12px/1.25 "Funnel Sans", Verdana, Geneva, sans-serif;
+  font: 600 12px/1.25 var(--ao3th-font-ui);
 }
 
 .rule-badge.is-highlight {
@@ -462,7 +507,7 @@ button {
 
 .options-empty h3 {
   color: #111111;
-  font: 700 20px/1.15 Georgia, "Times New Roman", serif;
+  font: 700 20px/1.15 var(--ao3th-font-display);
 }
 
 .options-empty p {
@@ -523,7 +568,7 @@ button {
 .options-editor-mode {
   margin: 0 0 6px;
   color: #990000;
-  font: 700 11px/1.3 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font: 700 11px/1.3 var(--ao3th-font-mono);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -585,7 +630,7 @@ button {
 .style-editor-row h3 {
   margin: 0;
   color: #111111;
-  font: 700 13px/1.25 "Funnel Sans", Verdana, Geneva, sans-serif;
+  font: 700 13px/1.25 var(--ao3th-font-ui);
 }
 
 .style-editor-row p {
@@ -599,7 +644,7 @@ button {
   align-items: center;
   min-height: 24px;
   padding: 0 9px;
-  font: 700 11px/1.2 "Funnel Sans", Verdana, Geneva, sans-serif;
+  font: 700 11px/1.2 var(--ao3th-font-ui);
   white-space: nowrap;
 }
 
@@ -657,7 +702,7 @@ button {
 
 .style-locked-label {
   color: #6b7280;
-  font: 700 11px/1.25 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font: 700 11px/1.25 var(--ao3th-font-mono);
   text-transform: uppercase;
 }
 

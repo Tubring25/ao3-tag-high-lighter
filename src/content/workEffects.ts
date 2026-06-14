@@ -1,4 +1,5 @@
 import type { HideWorkMode, ParsedWork, WorkMatchSummary } from "../core/types";
+import { t } from "../shared/i18n";
 
 const PLACEHOLDER_SELECTOR = "[data-ao3th-collapse-placeholder]";
 const WARN_BANNER_SELECTOR = "[data-ao3th-warn-banner]";
@@ -75,7 +76,7 @@ function ensureWarnBanner(workElement: HTMLElement): void {
   const banner = document.createElement("div");
   banner.className = "ao3th-warn-banner";
   banner.dataset.ao3thWarnBanner = "true";
-  banner.textContent = "This work contains warning tags.";
+  banner.textContent = t("contentWarnBanner");
 
   const title = workElement.querySelector("h4.heading, h4");
   if (title?.parentElement === workElement) {
@@ -135,13 +136,13 @@ function findDetailMetaElement(work: ParsedWork): HTMLElement | null {
 }
 
 function buildWarningMessage(reasons: readonly string[]): string {
-  if (reasons.length === 0) return "This work contains warning tags.";
-  return `This work contains warning tags: ${reasons.join(", ")}.`;
+  if (reasons.length === 0) return t("contentWarnBanner");
+  return t("contentWarningMessage", [reasons.join(", ")]);
 }
 
 function buildCautionMessage(reasons: readonly string[]): string {
-  if (reasons.length === 0) return "Caution: This work matches tags you usually hide from listings.";
-  return `Caution: This work matches tags you usually hide from listings: ${reasons.join(", ")}.`;
+  if (reasons.length === 0) return t("contentCautionNoReasons");
+  return t("contentCautionMessage", [reasons.join(", ")]);
 }
 
 function ensureCollapsePlaceholder(workElement: HTMLElement, reasons: readonly string[]): void {
@@ -180,18 +181,18 @@ function renderCollapsePlaceholder(button: HTMLButtonElement, expanded: boolean)
   setTextWithoutChildMutation(
     message,
     expanded
-      ? "Collapsed work is expanded for this page."
+      ? t("contentCollapsedExpanded")
       : buildCollapsedMessage(getCollapseReasons(button))
   );
 
   const action = getOrCreatePlaceholderPart(button, "ao3th-collapse-action");
-  setTextWithoutChildMutation(action, expanded ? "Hide again" : "Click to expand");
+  setTextWithoutChildMutation(action, expanded ? t("contentHideAgain") : t("contentClickToExpand"));
 }
 
 function buildCollapsedMessage(reasons: readonly string[]): string {
-  if (reasons.length === 0) return "This work is collapsed by a hideWork rule.";
-  if (reasons.length === 1) return `This work is collapsed by a hideWork rule: ${reasons[0]}`;
-  return `This work is collapsed by hideWork rules: ${reasons.join(", ")}`;
+  if (reasons.length === 0) return t("contentCollapsedNoReasons");
+  if (reasons.length === 1) return t("contentCollapsedOneReason", [reasons[0]]);
+  return t("contentCollapsedMultipleReasons", [reasons.join(", ")]);
 }
 
 function setCollapseReasons(button: HTMLButtonElement, reasons: readonly string[]): void {

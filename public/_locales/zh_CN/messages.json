@@ -1,0 +1,479 @@
+{
+  "extensionName": {
+    "message": "AO3 Tag Highlighter"
+  },
+  "extensionDescription": {
+    "message": "按标签规则标记、提醒或折叠 AO3 作品。"
+  },
+  "actionHighlight": {
+    "message": "高亮"
+  },
+  "actionWarning": {
+    "message": "提醒"
+  },
+  "actionWarn": {
+    "message": "提醒"
+  },
+  "actionCollapse": {
+    "message": "折叠"
+  },
+  "actionCollapseWork": {
+    "message": "折叠作品"
+  },
+  "actionHighlightTag": {
+    "message": "高亮标签"
+  },
+  "actionWarnWork": {
+    "message": "提醒作品"
+  },
+  "actionCustomTag": {
+    "message": "$1 标签"
+  },
+  "actionCustomWork": {
+    "message": "$1 作品"
+  },
+  "labelOn": {
+    "message": "开启"
+  },
+  "labelOff": {
+    "message": "关闭"
+  },
+  "labelPaused": {
+    "message": "暂停"
+  },
+  "labelEnabled": {
+    "message": "启用"
+  },
+  "labelExact": {
+    "message": "精确"
+  },
+  "labelContains": {
+    "message": "包含"
+  },
+  "labelWildcard": {
+    "message": "通配符"
+  },
+  "languageLabel": {
+    "message": "语言"
+  },
+  "languageAuto": {
+    "message": "自动"
+  },
+  "languageEnglish": {
+    "message": "English"
+  },
+  "languageChineseSimplified": {
+    "message": "简体中文"
+  },
+  "categoryAny": {
+    "message": "任意分类"
+  },
+  "categoryAll": {
+    "message": "全部"
+  },
+  "categoryRelationship": {
+    "message": "关系"
+  },
+  "categoryCharacter": {
+    "message": "角色"
+  },
+  "categoryFreeform": {
+    "message": "自由标签"
+  },
+  "popupExtensionEnabledAria": {
+    "message": "启用扩展"
+  },
+  "popupSettingsLoadErrorTitle": {
+    "message": "设置没有载入。"
+  },
+  "popupSettingsLoadErrorBody": {
+    "message": "重新打开弹窗，或去规则管理查看。"
+  },
+  "popupOpenAo3PageTitle": {
+    "message": "先打开 AO3 页面。"
+  },
+  "popupOpenAo3PageBody": {
+    "message": "当前页命中的规则会显示在这里。"
+  },
+  "popupPausedTitle": {
+    "message": "已暂停。"
+  },
+  "popupPausedMatchesBody": {
+    "message": "当前页有命中规则。开启后会显示标记。"
+  },
+  "popupPausedEmptyBody": {
+    "message": "开启后会按规则标记作品。"
+  },
+  "popupNoMatchesTitle": {
+    "message": "当前页没有命中规则。"
+  },
+  "popupNoMatchesBody": {
+    "message": "可以在规则管理里添加，或悬停标签点 +。"
+  },
+  "popupMatchesTitle": {
+    "message": "当前页命中 $1 项"
+  },
+  "popupStylesActiveBody": {
+    "message": "标记已显示在页面上。"
+  },
+  "popupStatHighlightTags": {
+    "message": "$1标签"
+  },
+  "popupStatCaution": {
+    "message": "隐藏提醒"
+  },
+  "popupManageRules": {
+    "message": "管理规则"
+  },
+  "popupTagHoverQuickAdd": {
+    "message": "悬停标签时显示 +"
+  },
+  "popupTagHoverQuickAddDescription": {
+    "message": "用 + 快速添加这枚标签的规则。"
+  },
+  "popupTagHoverQuickAddEnabledAria": {
+    "message": "启用悬停标签快速添加"
+  },
+  "popupSaveError": {
+    "message": "保存失败，请重试。"
+  },
+  "popupCurrentTab": {
+    "message": "当前标签页"
+  },
+  "popupAo3WorkPage": {
+    "message": "AO3 作品页"
+  },
+  "popupAo3Page": {
+    "message": "AO3 页面"
+  },
+  "optionsEyebrow": {
+    "message": "AO3 Tag Highlighter"
+  },
+  "optionsTitle": {
+    "message": "规则管理"
+  },
+  "optionsSubtitle": {
+    "message": "管理 AO3 标签的高亮、提醒和折叠规则。"
+  },
+  "optionsRulesCount": {
+    "message": "$1 条规则"
+  },
+  "optionsRuleSettings": {
+    "message": "规则设置"
+  },
+  "optionsRules": {
+    "message": "规则"
+  },
+  "optionsNavEnabled": {
+    "message": "已启用"
+  },
+  "optionsNavPaused": {
+    "message": "已暂停"
+  },
+  "optionsSavedInBrowser": {
+    "message": "保存在当前浏览器。"
+  },
+  "optionsRulesSubtitle": {
+    "message": "查找并更新你的规则。"
+  },
+  "optionsAddRule": {
+    "message": "+ 添加规则"
+  },
+  "optionsUserGuide": {
+    "message": "使用指南"
+  },
+  "optionsTagStyles": {
+    "message": "标签样式"
+  },
+  "optionsSearchPlaceholder": {
+    "message": "搜索标签..."
+  },
+  "optionsAllActions": {
+    "message": "全部效果"
+  },
+  "optionsAllCategories": {
+    "message": "全部分类"
+  },
+  "optionsAllStatus": {
+    "message": "全部状态"
+  },
+  "optionsTablePattern": {
+    "message": "匹配文本"
+  },
+  "optionsTableAction": {
+    "message": "效果"
+  },
+  "optionsTableMatch": {
+    "message": "匹配"
+  },
+  "optionsTableCategory": {
+    "message": "分类"
+  },
+  "optionsTableStatus": {
+    "message": "状态"
+  },
+  "optionsNoRulesTitle": {
+    "message": "还没有规则"
+  },
+  "optionsNoMatchingRulesTitle": {
+    "message": "没有匹配的规则"
+  },
+  "optionsNoRulesBody": {
+    "message": "添加一条标签规则，用来高亮、提醒或折叠作品。"
+  },
+  "optionsNoMatchingRulesBody": {
+    "message": "换个搜索条件，或清除筛选。"
+  },
+  "optionsClearFilters": {
+    "message": "清除筛选"
+  },
+  "optionsDisableRule": {
+    "message": "停用规则"
+  },
+  "optionsEnableRule": {
+    "message": "启用规则"
+  },
+  "optionsEdit": {
+    "message": "编辑"
+  },
+  "optionsDelete": {
+    "message": "删除"
+  },
+  "optionsEditingRule": {
+    "message": "正在编辑“$1”"
+  },
+  "optionsNewRule": {
+    "message": "新规则"
+  },
+  "optionsEditSelectedRule": {
+    "message": "编辑选中的规则"
+  },
+  "optionsCreateRule": {
+    "message": "创建规则"
+  },
+  "optionsEditHint": {
+    "message": "保存修改后会更新匹配的 AO3 页面。"
+  },
+  "optionsCreateHint": {
+    "message": "选择标签，以及匹配后要发生什么。"
+  },
+  "optionsFieldPattern": {
+    "message": "匹配文本"
+  },
+  "optionsFieldAction": {
+    "message": "效果"
+  },
+  "optionsFieldMatchMode": {
+    "message": "匹配方式"
+  },
+  "optionsFieldCategory": {
+    "message": "分类"
+  },
+  "optionsSave": {
+    "message": "保存"
+  },
+  "optionsCreate": {
+    "message": "创建"
+  },
+  "optionsTagAppearance": {
+    "message": "标签外观"
+  },
+  "optionsTagStylesHint": {
+    "message": "这些样式会应用到同类规则。"
+  },
+  "optionsStyleLabel": {
+    "message": "名称"
+  },
+  "optionsStyleBackground": {
+    "message": "背景"
+  },
+  "optionsStyleText": {
+    "message": "文字"
+  },
+  "optionsRecommendedPalettes": {
+    "message": "推荐配色"
+  },
+  "optionsCollapseAlwaysFixed": {
+    "message": "始终使用固定折叠样式。"
+  },
+  "optionsLocked": {
+    "message": "固定"
+  },
+  "optionsOperationFailed": {
+    "message": "操作失败"
+  },
+  "optionsDeleteConfirm": {
+    "message": "删除规则“$1”？"
+  },
+  "presetButter": {
+    "message": "奶油"
+  },
+  "presetMint": {
+    "message": "薄荷"
+  },
+  "presetSky": {
+    "message": "天空"
+  },
+  "presetRose": {
+    "message": "玫瑰"
+  },
+  "presetAmber": {
+    "message": "琥珀"
+  },
+  "presetMauve": {
+    "message": "淡紫"
+  },
+  "hoverQuickAddAria": {
+    "message": "快速添加这枚 AO3 标签"
+  },
+  "hoverMenuAria": {
+    "message": "快速添加标签规则"
+  },
+  "hoverAddRuleFor": {
+    "message": "给“$1”添加规则"
+  },
+  "toastRuleCreated": {
+    "message": "已添加规则：$1"
+  },
+  "contentWarnBanner": {
+    "message": "这篇作品包含需要留意的标签。"
+  },
+  "contentWarningMessage": {
+    "message": "这篇作品包含需要留意的标签：$1。"
+  },
+  "contentCautionNoReasons": {
+    "message": "注意：这篇作品含有你在列表页选择隐藏的标签。"
+  },
+  "contentCautionMessage": {
+    "message": "注意：这篇作品含有你在列表页选择隐藏的标签：$1。"
+  },
+  "contentCollapsedExpanded": {
+    "message": "这篇折叠作品已临时展开。"
+  },
+  "contentHideAgain": {
+    "message": "重新折叠"
+  },
+  "contentClickToExpand": {
+    "message": "展开"
+  },
+  "contentCollapsedNoReasons": {
+    "message": "这篇作品已按隐藏规则折叠。"
+  },
+  "contentCollapsedOneReason": {
+    "message": "这篇作品已按隐藏规则折叠：$1"
+  },
+  "contentCollapsedMultipleReasons": {
+    "message": "这篇作品已按隐藏规则折叠：$1"
+  },
+  "guideEyebrow": {
+    "message": "AO3 Tag Highlighter 使用指南"
+  },
+  "guideTitle": {
+    "message": "规则会怎样改变 AO3 页面"
+  },
+  "guideLede": {
+    "message": "用示例快速了解高亮、提醒和折叠。"
+  },
+  "guideTryIt": {
+    "message": "试试看"
+  },
+  "guideBackToOptions": {
+    "message": "返回配置页"
+  },
+  "guideControls": {
+    "message": "试一条规则"
+  },
+  "guideControlsHint": {
+    "message": "选择标签和处理方式，左侧预览会同步变化。"
+  },
+  "guideTag": {
+    "message": "标签"
+  },
+  "guideAction": {
+    "message": "处理方式"
+  },
+  "guideMatchMode": {
+    "message": "匹配方式"
+  },
+  "guideExactSummary": {
+    "message": "完整匹配一个 AO3 标签。"
+  },
+  "guideExactBestFor": {
+    "message": "从 AO3 复制标签时优先使用。"
+  },
+  "guideContainsSummary": {
+    "message": "只要标签里包含这个词或短语，就会匹配。"
+  },
+  "guideContainsBestFor": {
+    "message": "适合主题词，比如 Violence。"
+  },
+  "guideWildcardSummary": {
+    "message": "用 * 表示可以变化的文字。"
+  },
+  "guideWildcardBestFor": {
+    "message": "适合开头或结尾会变化的标签。"
+  },
+  "guideTextBeforeStar": {
+    "message": "固定开头"
+  },
+  "guideTextAfterStar": {
+    "message": "固定结尾"
+  },
+  "guidePattern": {
+    "message": "规则文本"
+  },
+  "guideMatches": {
+    "message": "会匹配"
+  },
+  "guideSkips": {
+    "message": "不会匹配"
+  },
+  "guideLivePreview": {
+    "message": "AO3 页面预览"
+  },
+  "guideResultHighlight": {
+    "message": "标签会用淡色标出来，方便快速扫视。"
+  },
+  "guideResultWarn": {
+    "message": "作品会保留显示，并在上方出现提醒条。"
+  },
+  "guideResultCollapse": {
+    "message": "列表页会先折叠作品，并显示触发原因。"
+  },
+  "guideMetaWords": {
+    "message": "字数"
+  },
+  "guideMetaChapters": {
+    "message": "章节"
+  },
+  "guideMetaKudos": {
+    "message": "Kudos"
+  },
+  "guideMatchingModesTitle": {
+    "message": "匹配方式"
+  },
+  "guideMatchingModesBody": {
+    "message": "选择规则要怎样匹配 AO3 标签。"
+  },
+  "guideNextTitle": {
+    "message": "下一步"
+  },
+  "guideStepAo3Title": {
+    "message": "在 AO3 添加"
+  },
+  "guideStepAo3Body": {
+    "message": "悬停标签，点击 +，选择高亮、提醒或折叠。"
+  },
+  "guideStepSafeTitle": {
+    "message": "先用精确匹配"
+  },
+  "guideStepSafeBody": {
+    "message": "直接复制 AO3 标签时，先选精确匹配。需要更宽泛时，再用包含或通配符。"
+  },
+  "guideStepTuneTitle": {
+    "message": "之后再微调"
+  },
+  "guideStepTuneBody": {
+    "message": "回到规则管理，可以改颜色、暂停规则或调整匹配方式。"
+  }
+}

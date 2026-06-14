@@ -1,6 +1,7 @@
 import type { Settings } from "../core/types";
-import { DEFAULT_ACTION_STYLES, getActionLabel } from "../core/actionStyles";
+import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
 import { LOG_PREFIX } from "../shared/constants";
+import { applyDocumentLanguage, getLocalizedActionLabel, setLanguagePreference, t } from "../shared/i18n";
 import type { HitStats, RuntimeMessage } from "../shared/message";
 import {
   getSettings as defaultGetSettings,
@@ -51,20 +52,25 @@ export async function renderPopupApp(
   if (!shell) return;
 
   const currentTab = await getCurrentTabSafely(deps);
-  const pageLabel = getPageLabel(currentTab);
   let settings: Settings;
 
   try {
     settings = await deps.getSettings();
+    setLanguagePreference(settings.languagePreference);
+    applyDocumentLanguage();
   } catch (error) {
     deps.logError(error);
     settings = createFallbackSettings();
+    setLanguagePreference(settings.languagePreference);
+    applyDocumentLanguage();
+    const pageLabel = getPageLabel(currentTab);
     renderHeader(shell, settings, null, deps, pageLabel);
     renderErrorNotice(shell);
     renderActions(shell, settings, deps);
     return;
   }
 
+  const pageLabel = getPageLabel(currentTab);
   const stats = await getCurrentPageStats(deps, currentTab);
 
   renderHeader(shell, settings, stats, deps, pageLabel);
@@ -118,7 +124,7 @@ function renderHeader(
 
   const title = document.createElement("h1");
   title.className = "popup-title";
-  title.textContent = "AO3 Tag Highlighter";
+  title.textContent = t("extensionName");
 
   const pageLabel = document.createElement("p");
   pageLabel.className = "popup-page-label";
@@ -131,7 +137,7 @@ function renderHeader(
 
   const switchLabel = document.createElement("label");
   switchLabel.className = "popup-switch";
-  switchLabel.setAttribute("aria-label", "Extension enabled");
+  switchLabel.setAttribute("aria-label", t("popupExtensionEnabledAria"));
 
   const status = document.createElement("span");
   status.className = "popup-switch-state";
@@ -147,7 +153,7 @@ function renderHeader(
   toggle.type = "checkbox";
   toggle.checked = settings.extensionEnabled;
   toggle.dataset.popupToggle = "true";
-  toggle.setAttribute("aria-label", "Extension enabled");
+  toggle.setAttribute("aria-label", t("popupExtensionEnabledAria"));
   attachSettingToggle(toggle, "extensionEnabled", status, saveStatus, deps, getExtensionStateLabel, {
     onSaveSuccess: (enabled) => {
       const notice = container.querySelector<HTMLElement>("[data-popup-notice]");
@@ -205,11 +211,11 @@ function renderErrorNotice(container: HTMLElement): void {
 
   const title = document.createElement("h2");
   title.className = "popup-notice-title";
-  title.textContent = "Settings could not load.";
+  title.textContent = t("popupSettingsLoadErrorTitle");
 
   const body = document.createElement("p");
   body.className = "popup-notice-body";
-  body.textContent = "Try reopening the popup, or open Manage rules.";
+  body.textContent = t("popupSettingsLoadErrorBody");
 
   notice.append(title, body);
   container.appendChild(notice);
@@ -222,23 +228,23 @@ function applyPageStatus(notice: HTMLElement, extensionEnabled: boolean, stats: 
 
   if (!stats) {
     notice.dataset.notice = "unavailable";
-    title.textContent = "Open an AO3 page.";
-    body.textContent = "Matches will appear here.";
+    title.textContent = t("popupOpenAo3PageTitle");
+    body.textContent = t("popupOpenAo3PageBody");
   } else if (!extensionEnabled) {
     notice.dataset.notice = "paused";
-    title.textContent = "Extension paused.";
+    title.textContent = t("popupPausedTitle");
     body.textContent =
       getVisibleMatchCount(stats) > 0
-        ? "Matches found. Turn on the extension to apply styles."
-        : "Turn on the extension to highlight, warn, or caution works.";
+        ? t("popupPausedMatchesBody")
+        : t("popupPausedEmptyBody");
   } else if (getVisibleMatchCount(stats) === 0) {
     notice.dataset.notice = "empty";
-    title.textContent = "No rule matches on this page yet.";
-    body.textContent = "Use Manage rules or hover AO3 tags to add rules.";
+    title.textContent = t("popupNoMatchesTitle");
+    body.textContent = t("popupNoMatchesBody");
   } else {
     notice.dataset.notice = "active";
-    title.textContent = `${getVisibleMatchCount(stats)} matches on this page`;
-    body.textContent = "Styles are active on this page.";
+    title.textContent = t("popupMatchesTitle", [getVisibleMatchCount(stats)]);
+    body.textContent = t("popupStylesActiveBody");
   }
 }
 
@@ -255,9 +261,9 @@ function renderStats(
   if (paused) section.dataset.state = "paused";
 
   const rows: Array<[string, string, number]> = [
-    [`${getActionLabel("highlight", settings.actionStyles)} tags`, "highlight", stats.highlight],
-    [getActionLabel("warn", settings.actionStyles), "warn", stats.warn],
-    ["Caution", "hideWork", stats.hideWork],
+    [t("popupStatHighlightTags", [getLocalizedActionLabel("highlight", settings.actionStyles)]), "highlight", stats.highlight],
+    [getLocalizedActionLabel("warn", settings.actionStyles), "warn", stats.warn],
+    [t("popupStatCaution"), "hideWork", stats.hideWork],
   ];
 
   for (const [label, key, count] of rows) {
@@ -280,7 +286,7 @@ function renderActions(container: HTMLElement, settings: Settings, deps: PopupAp
   manageButton.className = "popup-button popup-button-primary";
   manageButton.dataset.popupOptions = "true";
   if (!settings.extensionEnabled) manageButton.dataset.state = "paused";
-  manageButton.textContent = "Manage rules";
+  manageButton.textContent = t("popupManageRules");
   manageButton.addEventListener("click", () => {
     deps.openOptionsPage();
   });
@@ -300,11 +306,11 @@ function createHoverButtonSetting(settings: Settings, deps: PopupAppDeps): HTMLE
 
   const title = document.createElement("span");
   title.className = "popup-setting-title";
-  title.textContent = "Tag hover quick-add";
+  title.textContent = t("popupTagHoverQuickAdd");
 
   const description = document.createElement("span");
   description.className = "popup-setting-description";
-  description.textContent = "Show the + button next to AO3 tags.";
+  description.textContent = t("popupTagHoverQuickAddDescription");
 
   const statusRow = document.createElement("span");
   statusRow.className = "popup-setting-status-row";
@@ -328,7 +334,7 @@ function createHoverButtonSetting(settings: Settings, deps: PopupAppDeps): HTMLE
   toggle.disabled = !settings.extensionEnabled;
   toggle.dataset.popupHoverToggle = "true";
   toggle.dataset.popupPreferredChecked = String(settings.hoverButtonEnabled);
-  toggle.setAttribute("aria-label", "Tag hover quick-add enabled");
+  toggle.setAttribute("aria-label", t("popupTagHoverQuickAddEnabledAria"));
   attachSettingToggle(toggle, "hoverButtonEnabled", status, saveStatus, deps, getOnOffLabel, {
     onSaveSuccess: (enabled) => {
       toggle.dataset.popupPreferredChecked = String(enabled);
@@ -393,7 +399,7 @@ async function saveToggleSetting(
   } catch (error) {
     toggle.checked = previousChecked;
     stateElement.textContent = getStateLabel(previousChecked);
-    setSaveStatus(saveStatusElement, "Could not save. Try again.", "error");
+    setSaveStatus(saveStatusElement, t("popupSaveError"), "error");
     deps.logError(error);
   } finally {
     toggle.disabled = false;
@@ -411,11 +417,11 @@ function clearSaveStatus(element: HTMLElement): void {
 }
 
 function getExtensionStateLabel(enabled: boolean): string {
-  return enabled ? "On" : "Paused";
+  return enabled ? t("labelOn") : t("labelPaused");
 }
 
 function getOnOffLabel(enabled: boolean): string {
-  return enabled ? "On" : "Off";
+  return enabled ? t("labelOn") : t("labelOff");
 }
 
 function createStatLabel(label: string): HTMLElement {
@@ -464,16 +470,16 @@ function syncPausedControls(container: HTMLElement, extensionEnabled: boolean): 
 }
 
 function getPageLabel(tab: CurrentTab | null): string {
-  if (!tab?.url) return "Current tab";
+  if (!tab?.url) return t("popupCurrentTab");
 
   try {
     const url = new URL(tab.url);
     if (url.hostname === "archiveofourown.org") {
-      return /^\/works\/\d+(?:\/|$)/.test(url.pathname) ? "AO3 work page" : "AO3 page";
+      return /^\/works\/\d+(?:\/|$)/.test(url.pathname) ? t("popupAo3WorkPage") : t("popupAo3Page");
     }
     return url.hostname;
   } catch {
-    return "Current tab";
+    return t("popupCurrentTab");
   }
 }
 
@@ -484,6 +490,7 @@ function createFallbackSettings(): Settings {
     showToast: true,
     hideWorkMode: "collapse",
     enableOnWorkDetailPage: true,
+    languagePreference: "auto",
     actionStyles: DEFAULT_ACTION_STYLES,
   };
 }

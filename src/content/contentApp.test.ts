@@ -518,6 +518,7 @@ function createSettings(overrides: Partial<Settings> = {}): Settings {
     showToast: true,
     hideWorkMode: "collapse",
     enableOnWorkDetailPage: true,
+    languagePreference: "auto",
     actionStyles: DEFAULT_ACTION_STYLES,
     ...overrides,
   };

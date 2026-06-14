@@ -1,6 +1,7 @@
 import type { ParsedTag, ParsedWork, Rule, Settings } from "../core/types";
 import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
 import { LOG_PREFIX } from "../shared/constants";
+import { getEffectiveLanguageTag, getLocalizedCustomizableActionLabel, t } from "../shared/i18n";
 import { addRule as defaultAddRule } from "../storage/ruleStorage";
 import { showToast as defaultShowToast } from "./toast";
 
@@ -130,7 +131,7 @@ async function handleMenuClick(
   await options.onRuleCreated();
 
   if (settings.showToast) {
-    (options.showToast ?? defaultShowToast)(`Rule created: ${selectedTag.text}`);
+    (options.showToast ?? defaultShowToast)(t("toastRuleCreated", [selectedTag.text]));
   }
 }
 
@@ -139,6 +140,7 @@ function ensureShadowRoot(): ShadowRoot {
 
   shadowHost = document.createElement("div");
   shadowHost.id = "ao3th-hover-host";
+  shadowHost.lang = getEffectiveLanguageTag();
   shadowHost.style.position = "fixed";
   shadowHost.style.inset = "0";
   shadowHost.style.zIndex = "999999";
@@ -163,7 +165,7 @@ function injectShadowStyles(root: ShadowRoot, settings: Settings): void {
       color: #ffffff;
       box-shadow: none;
       cursor: pointer;
-      font: 700 13px/1 "Funnel Sans", Verdana, Geneva, sans-serif;
+      font: 700 13px/1 "Funnel Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", Verdana, Geneva, sans-serif;
       opacity: 0.8;
       pointer-events: auto;
       z-index: 1;
@@ -191,13 +193,13 @@ function injectShadowStyles(root: ShadowRoot, settings: Settings): void {
       pointer-events: auto;
       z-index: 2;
       overflow: hidden;
-      font-family: "Funnel Sans", Verdana, Geneva, sans-serif;
+      font-family: "Funnel Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", Verdana, Geneva, sans-serif;
     }
 
     [data-ao3th-menu-title] {
       margin: 0;
       color: #111111;
-      font: 600 14px/1.25 "Funnel Sans", Verdana, Geneva, sans-serif;
+      font: 600 14px/1.25 "Funnel Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", Verdana, Geneva, sans-serif;
     }
 
     [data-ao3th-menu-options] {
@@ -217,7 +219,7 @@ function injectShadowStyles(root: ShadowRoot, settings: Settings): void {
       background: #ffffff;
       color: #990000;
       cursor: pointer;
-      font: 400 13px/1.25 "Funnel Sans", Verdana, Geneva, sans-serif;
+      font: 400 13px/1.25 "Funnel Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", Verdana, Geneva, sans-serif;
       text-align: left;
     }
 
@@ -256,7 +258,7 @@ function createButton(): HTMLButtonElement {
   button.textContent = "+";
   button.dataset.ao3thHoverButton = "true";
   button.dataset.ao3thActive = "false";
-  button.setAttribute("aria-label", "Quick add AO3 tag rule");
+  button.setAttribute("aria-label", t("hoverQuickAddAria"));
   button.setAttribute("aria-expanded", "false");
   button.hidden = true;
   return button;
@@ -266,7 +268,7 @@ function createMenu(settings: Settings): HTMLElement {
   const menu = document.createElement("div");
   menu.dataset.ao3thHoverMenu = "true";
   menu.setAttribute("role", "menu");
-  menu.setAttribute("aria-label", "Quick add tag rule");
+  menu.setAttribute("aria-label", t("hoverMenuAria"));
   menu.hidden = true;
 
   const title = document.createElement("p");
@@ -290,10 +292,15 @@ function createMenu(settings: Settings): HTMLElement {
 }
 
 function getQuickAddActionLabel(action: Rule["action"], settings: Settings): string {
-  if (action === "hideWork") return "Collapse work";
-  if (action === "highlight") return `${settings.actionStyles.highlight.label} tag`;
-  if (settings.actionStyles.warn.label === DEFAULT_ACTION_STYLES.warn.label) return "Warn work";
-  return `${settings.actionStyles.warn.label} work`;
+  if (action === "hideWork") return t("actionCollapseWork");
+  if (action === "highlight") {
+    const label = getLocalizedCustomizableActionLabel("highlight", settings.actionStyles.highlight);
+    return settings.actionStyles.highlight.label === DEFAULT_ACTION_STYLES.highlight.label
+      ? t("actionHighlightTag")
+      : t("actionCustomTag", [label]);
+  }
+  if (settings.actionStyles.warn.label === DEFAULT_ACTION_STYLES.warn.label) return t("actionWarnWork");
+  return t("actionCustomWork", [getLocalizedCustomizableActionLabel("warn", settings.actionStyles.warn)]);
 }
 
 function showButton(tagElement: HTMLElement): void {
@@ -363,7 +370,7 @@ function isMenuOpen(): boolean {
 function updateMenuContext(menu: HTMLElement, tag: ParsedTag): void {
   const title = menu.querySelector<HTMLElement>("[data-ao3th-menu-title]");
 
-  if (title) title.textContent = `Add rule for “${tag.text}”`;
+  if (title) title.textContent = t("hoverAddRuleFor", [tag.text]);
 }
 
 function setHoveredTagElement(element: HTMLElement | null): void {

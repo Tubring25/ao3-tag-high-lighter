@@ -1,0 +1,479 @@
+{
+  "extensionName": {
+    "message": "AO3 Tag Highlighter"
+  },
+  "extensionDescription": {
+    "message": "Highlight, warn, or collapse AO3 works based on tag rules."
+  },
+  "actionHighlight": {
+    "message": "Highlight"
+  },
+  "actionWarning": {
+    "message": "Warning"
+  },
+  "actionWarn": {
+    "message": "Warn"
+  },
+  "actionCollapse": {
+    "message": "Collapse"
+  },
+  "actionCollapseWork": {
+    "message": "Collapse work"
+  },
+  "actionHighlightTag": {
+    "message": "Highlight tag"
+  },
+  "actionWarnWork": {
+    "message": "Warn work"
+  },
+  "actionCustomTag": {
+    "message": "$1 tag"
+  },
+  "actionCustomWork": {
+    "message": "$1 work"
+  },
+  "labelOn": {
+    "message": "On"
+  },
+  "labelOff": {
+    "message": "Off"
+  },
+  "labelPaused": {
+    "message": "Paused"
+  },
+  "labelEnabled": {
+    "message": "Enabled"
+  },
+  "labelExact": {
+    "message": "Exact"
+  },
+  "labelContains": {
+    "message": "Contains"
+  },
+  "labelWildcard": {
+    "message": "Wildcard"
+  },
+  "languageLabel": {
+    "message": "Language"
+  },
+  "languageAuto": {
+    "message": "Auto"
+  },
+  "languageEnglish": {
+    "message": "English"
+  },
+  "languageChineseSimplified": {
+    "message": "简体中文"
+  },
+  "categoryAny": {
+    "message": "Any category"
+  },
+  "categoryAll": {
+    "message": "all"
+  },
+  "categoryRelationship": {
+    "message": "relationship"
+  },
+  "categoryCharacter": {
+    "message": "character"
+  },
+  "categoryFreeform": {
+    "message": "freeform"
+  },
+  "popupExtensionEnabledAria": {
+    "message": "Extension enabled"
+  },
+  "popupSettingsLoadErrorTitle": {
+    "message": "Settings could not load."
+  },
+  "popupSettingsLoadErrorBody": {
+    "message": "Try reopening the popup, or open Manage rules."
+  },
+  "popupOpenAo3PageTitle": {
+    "message": "Open an AO3 page."
+  },
+  "popupOpenAo3PageBody": {
+    "message": "Matches will appear here."
+  },
+  "popupPausedTitle": {
+    "message": "Extension paused."
+  },
+  "popupPausedMatchesBody": {
+    "message": "Matches found. Turn on the extension to apply styles."
+  },
+  "popupPausedEmptyBody": {
+    "message": "Turn on the extension to highlight, warn, or caution works."
+  },
+  "popupNoMatchesTitle": {
+    "message": "No rule matches on this page yet."
+  },
+  "popupNoMatchesBody": {
+    "message": "Use Manage rules or hover AO3 tags to add rules."
+  },
+  "popupMatchesTitle": {
+    "message": "$1 matches on this page"
+  },
+  "popupStylesActiveBody": {
+    "message": "Styles are active on this page."
+  },
+  "popupStatHighlightTags": {
+    "message": "$1 tags"
+  },
+  "popupStatCaution": {
+    "message": "Caution"
+  },
+  "popupManageRules": {
+    "message": "Manage rules"
+  },
+  "popupTagHoverQuickAdd": {
+    "message": "Tag hover quick-add"
+  },
+  "popupTagHoverQuickAddDescription": {
+    "message": "Show the + button next to AO3 tags."
+  },
+  "popupTagHoverQuickAddEnabledAria": {
+    "message": "Tag hover quick-add enabled"
+  },
+  "popupSaveError": {
+    "message": "Could not save. Try again."
+  },
+  "popupCurrentTab": {
+    "message": "Current tab"
+  },
+  "popupAo3WorkPage": {
+    "message": "AO3 work page"
+  },
+  "popupAo3Page": {
+    "message": "AO3 page"
+  },
+  "optionsEyebrow": {
+    "message": "AO3 Tag Highlighter"
+  },
+  "optionsTitle": {
+    "message": "Rules manager"
+  },
+  "optionsSubtitle": {
+    "message": "Manage how AO3 tags are highlighted, marked, or collapsed."
+  },
+  "optionsRulesCount": {
+    "message": "$1 rules"
+  },
+  "optionsRuleSettings": {
+    "message": "Rule settings"
+  },
+  "optionsRules": {
+    "message": "Rules"
+  },
+  "optionsNavEnabled": {
+    "message": "Enabled"
+  },
+  "optionsNavPaused": {
+    "message": "Paused"
+  },
+  "optionsSavedInBrowser": {
+    "message": "Saved in this browser."
+  },
+  "optionsRulesSubtitle": {
+    "message": "Find and update your rules."
+  },
+  "optionsAddRule": {
+    "message": "+ Add rule"
+  },
+  "optionsUserGuide": {
+    "message": "User guide"
+  },
+  "optionsTagStyles": {
+    "message": "Tag styles"
+  },
+  "optionsSearchPlaceholder": {
+    "message": "Search tags..."
+  },
+  "optionsAllActions": {
+    "message": "All actions"
+  },
+  "optionsAllCategories": {
+    "message": "All categories"
+  },
+  "optionsAllStatus": {
+    "message": "All status"
+  },
+  "optionsTablePattern": {
+    "message": "Pattern"
+  },
+  "optionsTableAction": {
+    "message": "Action"
+  },
+  "optionsTableMatch": {
+    "message": "Match"
+  },
+  "optionsTableCategory": {
+    "message": "Category"
+  },
+  "optionsTableStatus": {
+    "message": "Status"
+  },
+  "optionsNoRulesTitle": {
+    "message": "No rules yet"
+  },
+  "optionsNoMatchingRulesTitle": {
+    "message": "No matching rules"
+  },
+  "optionsNoRulesBody": {
+    "message": "Add a tag rule to highlight, warn, or collapse works."
+  },
+  "optionsNoMatchingRulesBody": {
+    "message": "Try another search or clear filters."
+  },
+  "optionsClearFilters": {
+    "message": "Clear filters"
+  },
+  "optionsDisableRule": {
+    "message": "Disable rule"
+  },
+  "optionsEnableRule": {
+    "message": "Enable rule"
+  },
+  "optionsEdit": {
+    "message": "Edit"
+  },
+  "optionsDelete": {
+    "message": "Delete"
+  },
+  "optionsEditingRule": {
+    "message": "Editing “$1”"
+  },
+  "optionsNewRule": {
+    "message": "New rule"
+  },
+  "optionsEditSelectedRule": {
+    "message": "Edit selected rule"
+  },
+  "optionsCreateRule": {
+    "message": "Create rule"
+  },
+  "optionsEditHint": {
+    "message": "Save changes to update matching AO3 pages."
+  },
+  "optionsCreateHint": {
+    "message": "Choose a tag and what should happen."
+  },
+  "optionsFieldPattern": {
+    "message": "Pattern"
+  },
+  "optionsFieldAction": {
+    "message": "Action"
+  },
+  "optionsFieldMatchMode": {
+    "message": "Match mode"
+  },
+  "optionsFieldCategory": {
+    "message": "Category"
+  },
+  "optionsSave": {
+    "message": "Save"
+  },
+  "optionsCreate": {
+    "message": "Create"
+  },
+  "optionsTagAppearance": {
+    "message": "Tag appearance"
+  },
+  "optionsTagStylesHint": {
+    "message": "These styles apply to all rules with this action."
+  },
+  "optionsStyleLabel": {
+    "message": "Label"
+  },
+  "optionsStyleBackground": {
+    "message": "BG"
+  },
+  "optionsStyleText": {
+    "message": "Text"
+  },
+  "optionsRecommendedPalettes": {
+    "message": "Recommended palettes"
+  },
+  "optionsCollapseAlwaysFixed": {
+    "message": "Always uses the collapse style."
+  },
+  "optionsLocked": {
+    "message": "Locked"
+  },
+  "optionsOperationFailed": {
+    "message": "Operation failed"
+  },
+  "optionsDeleteConfirm": {
+    "message": "Delete rule \"$1\"?"
+  },
+  "presetButter": {
+    "message": "Butter"
+  },
+  "presetMint": {
+    "message": "Mint"
+  },
+  "presetSky": {
+    "message": "Sky"
+  },
+  "presetRose": {
+    "message": "Rose"
+  },
+  "presetAmber": {
+    "message": "Amber"
+  },
+  "presetMauve": {
+    "message": "Mauve"
+  },
+  "hoverQuickAddAria": {
+    "message": "Quick add AO3 tag rule"
+  },
+  "hoverMenuAria": {
+    "message": "Quick add tag rule"
+  },
+  "hoverAddRuleFor": {
+    "message": "Add rule for “$1”"
+  },
+  "toastRuleCreated": {
+    "message": "Rule created: $1"
+  },
+  "contentWarnBanner": {
+    "message": "This work contains warning tags."
+  },
+  "contentWarningMessage": {
+    "message": "This work contains warning tags: $1."
+  },
+  "contentCautionNoReasons": {
+    "message": "Caution: This work matches tags you usually hide from listings."
+  },
+  "contentCautionMessage": {
+    "message": "Caution: This work matches tags you usually hide from listings: $1."
+  },
+  "contentCollapsedExpanded": {
+    "message": "Collapsed work is expanded for this page."
+  },
+  "contentHideAgain": {
+    "message": "Hide again"
+  },
+  "contentClickToExpand": {
+    "message": "Click to expand"
+  },
+  "contentCollapsedNoReasons": {
+    "message": "This work is collapsed by a hideWork rule."
+  },
+  "contentCollapsedOneReason": {
+    "message": "This work is collapsed by a hideWork rule: $1"
+  },
+  "contentCollapsedMultipleReasons": {
+    "message": "This work is collapsed by hideWork rules: $1"
+  },
+  "guideEyebrow": {
+    "message": "AO3 Tag Highlighter Guide"
+  },
+  "guideTitle": {
+    "message": "See what a tag rule changes."
+  },
+  "guideLede": {
+    "message": "Try the preview, then read the rule basics below."
+  },
+  "guideTryIt": {
+    "message": "Try it"
+  },
+  "guideBackToOptions": {
+    "message": "Back to options"
+  },
+  "guideControls": {
+    "message": "Controls"
+  },
+  "guideControlsHint": {
+    "message": "Adjust the sample rule."
+  },
+  "guideTag": {
+    "message": "Tag"
+  },
+  "guideAction": {
+    "message": "Action"
+  },
+  "guideMatchMode": {
+    "message": "Match mode"
+  },
+  "guideExactSummary": {
+    "message": "Matches the whole AO3 tag only."
+  },
+  "guideExactBestFor": {
+    "message": "Best first choice for copied AO3 tags."
+  },
+  "guideContainsSummary": {
+    "message": "Matches tags that include this word or phrase."
+  },
+  "guideContainsBestFor": {
+    "message": "Use for broad themes that appear in many tag names."
+  },
+  "guideWildcardSummary": {
+    "message": "Use * when part of the tag may change."
+  },
+  "guideWildcardBestFor": {
+    "message": "Use when the beginning or ending may vary."
+  },
+  "guideTextBeforeStar": {
+    "message": "Text before *"
+  },
+  "guideTextAfterStar": {
+    "message": "Text after *"
+  },
+  "guidePattern": {
+    "message": "Pattern"
+  },
+  "guideMatches": {
+    "message": "Matches"
+  },
+  "guideSkips": {
+    "message": "Skips"
+  },
+  "guideLivePreview": {
+    "message": "Live AO3-style preview"
+  },
+  "guideResultHighlight": {
+    "message": "The tag gets a quiet color marker so it is easy to scan."
+  },
+  "guideResultWarn": {
+    "message": "The work stays visible, with a warning bar above the metadata."
+  },
+  "guideResultCollapse": {
+    "message": "The work collapses on listing pages and shows the matched reason."
+  },
+  "guideMetaWords": {
+    "message": "Words"
+  },
+  "guideMetaChapters": {
+    "message": "Chapters"
+  },
+  "guideMetaKudos": {
+    "message": "Kudos"
+  },
+  "guideMatchingModesTitle": {
+    "message": "Matching modes"
+  },
+  "guideMatchingModesBody": {
+    "message": "Choose how closely a rule pattern should match AO3 tag text."
+  },
+  "guideNextTitle": {
+    "message": "What to do next"
+  },
+  "guideStepAo3Title": {
+    "message": "On AO3"
+  },
+  "guideStepAo3Body": {
+    "message": "Hover a tag, click +, then choose Highlight, Warning, or Collapse."
+  },
+  "guideStepSafeTitle": {
+    "message": "Start safe"
+  },
+  "guideStepSafeBody": {
+    "message": "Use Exact for copied AO3 tags. Try Contains or Wildcard only when you need broader matches."
+  },
+  "guideStepTuneTitle": {
+    "message": "Tune later"
+  },
+  "guideStepTuneBody": {
+    "message": "Use Manage rules to edit colors, pause rules, or change match modes."
+  }
+}

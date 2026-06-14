@@ -1,12 +1,18 @@
 import { renderGuideApp } from "./guideApp";
 
 describe("renderGuideApp", () => {
-  it("renders the guide sections with matching modes visible", () => {
+  it("renders the guide sections with matching modes visible", async () => {
     const container = document.createElement("div");
 
-    renderGuideApp(container);
+    await renderGuideApp(container);
 
     expect(container.textContent).toContain("AO3 Tag Highlighter Guide");
+    expect(container.querySelector<HTMLAnchorElement>(".guide-primary-link")?.textContent).toBe(
+      "Back to options"
+    );
+    expect(container.querySelector<HTMLAnchorElement>(".guide-primary-link")?.getAttribute("href")).toBe(
+      "options.html"
+    );
     expect(container.textContent).toContain("Controls");
     expect(container.textContent).toContain("Live AO3-style preview");
     expect(container.textContent).toContain("Hotshot");
@@ -23,10 +29,10 @@ describe("renderGuideApp", () => {
     expect(container.querySelector(".guide-match-card")).toBeNull();
   });
 
-  it("updates the live example when action and tag are selected", () => {
+  it("updates the live example when action and tag are selected", async () => {
     const container = document.createElement("div");
 
-    renderGuideApp(container);
+    await renderGuideApp(container);
     expect(getButton(container, '[data-demo-tag="Firefighter Vi"]').className).toContain("is-highlight");
 
     getButton(container, '[data-demo-tag="Gun Violence"]').click();
@@ -35,14 +41,14 @@ describe("renderGuideApp", () => {
     expect(container.querySelector("[data-active-rule-label]")?.textContent).toBe("Collapse: Gun Violence");
     expect(getButton(container, '[data-demo-tag="Gun Violence"]').className).toContain("is-hideWork");
     expect(container.textContent).toContain(
-      "This work is collapsed by a hideWork rule: Gun Violence."
+      "This work is collapsed by a hideWork rule: Gun Violence"
     );
   });
 
-  it("keeps match mode examples visible and updates the selected mode in the preview", () => {
+  it("keeps match mode examples visible and updates the selected mode in the preview", async () => {
     const container = document.createElement("div");
 
-    renderGuideApp(container);
+    await renderGuideApp(container);
     getButton(container, '[data-demo-match-mode="contains"]').click();
 
     expect(container.querySelector("[data-match-mode-preview]")?.getAttribute("data-match-mode-preview")).toBe(
@@ -57,10 +63,10 @@ describe("renderGuideApp", () => {
     expect(container.textContent).not.toContain("*Lovers");
   });
 
-  it("uses clear wildcard examples for text before and after the asterisk", () => {
+  it("uses clear wildcard examples for text before and after the asterisk", async () => {
     const container = document.createElement("div");
 
-    renderGuideApp(container);
+    await renderGuideApp(container);
     getButton(container, '[data-demo-match-mode="wildcard"]').click();
 
     expect(container.querySelector("[data-match-mode-preview]")?.getAttribute("data-match-mode-preview")).toBe(
@@ -77,10 +83,10 @@ describe("renderGuideApp", () => {
     expect(container.textContent).toContain("Lovers to Enemies");
   });
 
-  it("keeps the demo focused on preview controls without an extra add-example action", () => {
+  it("keeps the demo focused on preview controls without an extra add-example action", async () => {
     const container = document.createElement("div");
 
-    renderGuideApp(container);
+    await renderGuideApp(container);
     expect(container.textContent).not.toContain("Example rule added");
     expect(container.querySelector("[data-create-demo-rule]")).toBeNull();
 

@@ -1,8 +1,20 @@
+:root {
+  --ao3th-font-ui: "Funnel Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", Verdana, Geneva, sans-serif;
+  --ao3th-font-display: Newsreader, Georgia, "Songti SC", "Noto Serif SC", "SimSun", serif;
+  --ao3th-font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", monospace;
+}
+
+:lang(zh) {
+  --ao3th-font-ui: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Heiti SC", sans-serif;
+  --ao3th-font-display: var(--ao3th-font-ui);
+  --ao3th-font-mono: var(--ao3th-font-ui);
+}
+
 body {
   margin: 0;
   width: 390px;
   color: #111111;
-  font-family: "Funnel Sans", Verdana, Geneva, sans-serif;
+  font-family: var(--ao3th-font-ui);
 }
 
 .popup-shell {
@@ -32,7 +44,7 @@ body {
 .popup-title {
   margin: 0;
   color: #111111;
-  font-family: Newsreader, Georgia, "Times New Roman", serif;
+  font-family: var(--ao3th-font-display);
   font-size: 25px;
   font-weight: 400;
   line-height: 1.05;
@@ -41,7 +53,7 @@ body {
 .popup-page-label {
   margin: 0;
   color: #666666;
-  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-family: var(--ao3th-font-mono);
   font-size: 11px;
   line-height: 1.2;
 }
@@ -58,7 +70,7 @@ body {
 .popup-save-status,
 .popup-setting-status {
   color: #666666;
-  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-family: var(--ao3th-font-mono);
   font-size: 11px;
   line-height: 1.2;
 }
@@ -233,7 +245,7 @@ body {
 }
 
 .popup-stat-value {
-  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-family: var(--ao3th-font-mono);
   font-size: 16px;
   font-weight: 600;
   line-height: 1.2;

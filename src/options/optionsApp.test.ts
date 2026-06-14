@@ -1,4 +1,4 @@
-import type { MatchMode, Rule, RuleAction, TagCategory } from "../core/types";
+import type { MatchMode, Rule, RuleAction, Settings, TagCategory } from "../core/types";
 import { DEFAULT_SETTINGS } from "../storage/settingsStorage";
 import { renderOptionsApp, type OptionsAppDeps } from "./optionsApp";
 
@@ -10,11 +10,29 @@ describe("renderOptionsApp", () => {
 
     expect(container.textContent).toContain("Slow Burn");
     expect(container.textContent).toContain("Highlight");
+    expect(container.textContent).not.toContain("Used by extension pages and AO3 messages.");
     expect(container.querySelector<HTMLAnchorElement>(".options-guide-link")?.getAttribute("href")).toBe(
       "guide.html"
     );
     expect(container.querySelectorAll("[data-rule-row]")).toHaveLength(2);
     expect(getContentGrid(container).className).not.toContain("has-editor");
+  });
+
+  it("saves the interface language preference from the sidebar", async () => {
+    const container = document.createElement("div");
+    const saveSettings = vi.fn(async (patch: Partial<Settings>) => ({ ...DEFAULT_SETTINGS, ...patch }));
+
+    await renderOptionsApp(container, createDeps({ saveSettings }));
+    const language = getSelect(container, "[data-options-language]");
+    language.value = "zh_CN";
+    language.dispatchEvent(new Event("change"));
+    await flushAsyncHandlers();
+
+    expect(saveSettings).toHaveBeenCalledWith({ languagePreference: "zh_CN" });
+    expect(document.documentElement.lang).toBe("zh-CN");
+    expect(container.textContent).toContain("规则管理");
+    expect(container.textContent).not.toContain("用于扩展页面和 AO3 页面提示。");
+    expect(getSelect(container, "[data-options-language]").value).toBe("zh_CN");
   });
 
   it("renders an empty state when there are no rules", async () => {

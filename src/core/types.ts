@@ -12,6 +12,8 @@ export type RuleSource = "manual" | "quickAdd";
 
 export type HideWorkMode = "collapse" | "hide";
 
+export type LanguagePreference = "auto" | "en" | "zh_CN";
+
 export interface RuleActionStyle {
   label: string;
   backgroundColor: string;
@@ -41,6 +43,7 @@ export interface Settings {
   showToast: boolean;
   hideWorkMode: HideWorkMode;
   enableOnWorkDetailPage: boolean;
+  languagePreference: LanguagePreference;
   actionStyles: RuleActionStyles;
 }
 

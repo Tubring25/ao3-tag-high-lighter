@@ -1,9 +1,21 @@
+:root {
+  --ao3th-font-ui: "Funnel Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", Verdana, Geneva, sans-serif;
+  --ao3th-font-display: Georgia, "Songti SC", "Noto Serif SC", "SimSun", serif;
+  --ao3th-font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", monospace;
+}
+
+:lang(zh) {
+  --ao3th-font-ui: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Heiti SC", sans-serif;
+  --ao3th-font-display: var(--ao3th-font-ui);
+  --ao3th-font-mono: var(--ao3th-font-ui);
+}
+
 body {
   margin: 0;
   min-height: 100vh;
   background: #f7f4ee;
   color: #111111;
-  font-family: "Funnel Sans", Verdana, Geneva, sans-serif;
+  font-family: var(--ao3th-font-ui);
 }
 
 button,
@@ -34,7 +46,7 @@ button {
 .guide-eyebrow {
   margin: 0 0 8px;
   color: #990000;
-  font: 700 12px/1.3 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font: 700 12px/1.3 var(--ao3th-font-mono);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -43,7 +55,7 @@ button {
   max-width: 740px;
   margin: 0;
   color: #111111;
-  font: 700 clamp(36px, 6vw, 64px)/0.94 Georgia, "Times New Roman", serif;
+  font: 700 clamp(36px, 6vw, 64px)/0.94 var(--ao3th-font-display);
   letter-spacing: -0.035em;
 }
 
@@ -120,7 +132,7 @@ button {
 .guide-builder h2 {
   margin: 0;
   color: #111111;
-  font: 700 15px/1.2 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font: 700 15px/1.2 var(--ao3th-font-mono);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -129,7 +141,7 @@ button {
 .guide-next h2 {
   margin: 0;
   color: #111111;
-  font: 700 26px/1.05 Georgia, "Times New Roman", serif;
+  font: 700 26px/1.05 var(--ao3th-font-display);
 }
 
 .guide-builder > p,
@@ -148,7 +160,7 @@ button {
 .guide-field-group h3 {
   margin: 0;
   color: #4b3f35;
-  font: 700 12px/1.35 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font: 700 12px/1.35 var(--ao3th-font-mono);
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
@@ -222,7 +234,7 @@ button {
 .guide-match-pattern span,
 .guide-match-sample-row > span {
   color: #6b6259;
-  font: 700 10px/1.3 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font: 700 10px/1.3 var(--ao3th-font-mono);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -231,7 +243,7 @@ button {
   padding: 3px 6px;
   background: #f7f4ee;
   color: #111111;
-  font: 700 12px/1.4 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font: 700 12px/1.4 var(--ao3th-font-mono);
 }
 
 .guide-match-sample-row {
@@ -379,7 +391,7 @@ button {
 
 .guide-preview-top p {
   margin: 0;
-  font: 700 11px/1.3 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font: 700 11px/1.3 var(--ao3th-font-mono);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -412,13 +424,14 @@ button {
 }
 
 .guide-work-card.is-hideWork .guide-work-banner {
+  border-left-color: #6b7280;
   background: #e5e7eb;
   color: #374151;
 }
 
 .guide-work-card h3 {
   margin: 0 0 10px;
-  font: 700 clamp(22px, 3vw, 30px)/1.08 Georgia, "Times New Roman", serif;
+  font: 700 clamp(22px, 3vw, 30px)/1.08 var(--ao3th-font-display);
 }
 
 .guide-work-card h3 a {
@@ -427,7 +440,7 @@ button {
 
 .guide-work-card h3 span {
   color: #5f5146;
-  font: 400 14px/1.3 "Funnel Sans", Verdana, Geneva, sans-serif;
+  font: 400 14px/1.3 var(--ao3th-font-ui);
 }
 
 .guide-work-tags {
@@ -527,7 +540,7 @@ button {
   display: block;
   margin-bottom: 16px;
   color: #990000;
-  font: 700 12px/1 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font: 700 12px/1 var(--ao3th-font-mono);
 }
 
 .guide-next strong {

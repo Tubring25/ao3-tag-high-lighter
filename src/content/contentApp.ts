@@ -4,6 +4,7 @@ import { listRules as defaultListRules } from "../storage/ruleStorage";
 import { getSettings as defaultGetSettings } from "../storage/settingsStorage";
 import type { HitStats, RuntimeMessage } from "../shared/message";
 import { LOG_PREFIX } from "../shared/constants";
+import { setLanguagePreference } from "../shared/i18n";
 import { debounce as defaultDebounce } from "../shared/utils";
 import { parseAo3Works as defaultParseAo3Works } from "./ao3Parser";
 import { calculateHitStats as defaultCalculateHitStats } from "./hitStats";
@@ -103,6 +104,7 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     });
 
     cachedSettings = await deps.getSettings();
+    setLanguagePreference(cachedSettings.languagePreference);
     if (!cachedSettings.extensionEnabled) return;
 
     cachedRules = await deps.listRules();
@@ -125,6 +127,7 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
 
   async function handleSettingsUpdated(): Promise<void> {
     cachedSettings = await deps.getSettings();
+    setLanguagePreference(cachedSettings.languagePreference);
 
     if (!cachedSettings.extensionEnabled) {
       safeStopPageObserver();
