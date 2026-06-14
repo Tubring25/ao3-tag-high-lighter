@@ -3,7 +3,7 @@
     "message": "AO3 Tag Highlighter"
   },
   "extensionDescription": {
-    "message": "Highlight, warn, or collapse AO3 works based on tag rules."
+    "message": "Mark AO3 tags, show warnings, and collapse works with your own tag rules."
   },
   "actionHighlight": {
     "message": "Highlight"
@@ -304,6 +304,21 @@
   },
   "optionsDeleteConfirm": {
     "message": "Delete rule \"$1\"?"
+  },
+  "optionsSelectedCount": {
+    "message": "$1 selected"
+  },
+  "optionsSelectRule": {
+    "message": "Select rule “$1”"
+  },
+  "optionsSelectAllRules": {
+    "message": "Select all visible rules"
+  },
+  "optionsDeleteSelected": {
+    "message": "Delete selected"
+  },
+  "optionsBulkDeleteConfirm": {
+    "message": "Delete $1 selected rules?"
   },
   "presetButter": {
     "message": "Butter"

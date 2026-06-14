@@ -273,6 +273,53 @@ describe("renderOptionsApp", () => {
     expect(container.textContent).not.toContain("Slow Burn");
   });
 
+  it("deletes selected rules in bulk after confirmation", async () => {
+    const container = document.createElement("div");
+    const deleteRules = vi.fn(async () => undefined);
+
+    await renderOptionsApp(
+      container,
+      createDeps({ deleteRules, confirmBulkDelete: vi.fn(() => true) })
+    );
+    checkInput(container, '[data-rule-select][data-rule-id="rule-1"]');
+    checkInput(container, '[data-rule-select][data-rule-id="rule-2"]');
+
+    expect(container.textContent).toContain("2 selected");
+    getButton(container, "[data-options-bulk-delete]").click();
+    await flushAsyncHandlers();
+
+    expect(deleteRules).toHaveBeenCalledWith(["rule-1", "rule-2"]);
+    expect(container.textContent).not.toContain("Slow Burn");
+    expect(container.textContent).not.toContain("Angst");
+  });
+
+  it("selects all visible rules from the table header", async () => {
+    const container = document.createElement("div");
+
+    await renderOptionsApp(container, createDeps());
+    checkInput(container, "[data-options-select-all]");
+
+    expect(container.textContent).toContain("2 selected");
+    expect(getInput(container, '[data-rule-select][data-rule-id="rule-1"]').checked).toBe(true);
+    expect(getInput(container, '[data-rule-select][data-rule-id="rule-2"]').checked).toBe(true);
+  });
+
+  it("does not bulk delete selected rules when confirmation is cancelled", async () => {
+    const container = document.createElement("div");
+    const deleteRules = vi.fn(async () => undefined);
+
+    await renderOptionsApp(
+      container,
+      createDeps({ deleteRules, confirmBulkDelete: vi.fn(() => false) })
+    );
+    checkInput(container, '[data-rule-select][data-rule-id="rule-1"]');
+    getButton(container, "[data-options-bulk-delete]").click();
+    await flushAsyncHandlers();
+
+    expect(deleteRules).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("Slow Burn");
+  });
+
   it("does not delete a rule when confirmation is cancelled", async () => {
     const container = document.createElement("div");
     const deleteRule = vi.fn(async () => undefined);
@@ -332,10 +379,12 @@ function createDeps(overrides: Partial<OptionsAppDeps> = {}): OptionsAppDeps {
     addRule: vi.fn(async (input) => createRule({ id: "rule-created", ...input })),
     updateRule: vi.fn(async (id, patch) => createRule({ id, ...patch })),
     deleteRule: vi.fn(async () => undefined),
+    deleteRules: vi.fn(async () => undefined),
     toggleRule: vi.fn(async (id) => createRule({ id, enabled: false })),
     getSettings: vi.fn(async () => DEFAULT_SETTINGS),
     saveSettings: vi.fn(async (patch) => ({ ...DEFAULT_SETTINGS, ...patch })),
     confirmDelete: vi.fn(() => true),
+    confirmBulkDelete: vi.fn(() => true),
     alertError: vi.fn(),
     logError: vi.fn(),
     ...overrides,
@@ -360,6 +409,12 @@ function getInput(container: HTMLElement, selector: string): HTMLInputElement {
   const input = container.querySelector<HTMLInputElement>(selector);
   if (!input) throw new Error(`Missing input: ${selector}`);
   return input;
+}
+
+function checkInput(container: HTMLElement, selector: string): void {
+  const input = getInput(container, selector);
+  input.checked = true;
+  input.dispatchEvent(new Event("change"));
 }
 
 function getSelect(container: HTMLElement, selector: string): HTMLSelectElement {

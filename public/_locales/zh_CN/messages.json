@@ -3,7 +3,7 @@
     "message": "AO3 Tag Highlighter"
   },
   "extensionDescription": {
-    "message": "按标签规则标记、提醒或折叠 AO3 作品。"
+    "message": "用自己的标签规则标记 AO3 标签、显示提醒并折叠作品。"
   },
   "actionHighlight": {
     "message": "高亮"
@@ -304,6 +304,21 @@
   },
   "optionsDeleteConfirm": {
     "message": "删除规则“$1”？"
+  },
+  "optionsSelectedCount": {
+    "message": "已选择 $1 条"
+  },
+  "optionsSelectRule": {
+    "message": "选择规则“$1”"
+  },
+  "optionsSelectAllRules": {
+    "message": "选择当前显示的全部规则"
+  },
+  "optionsDeleteSelected": {
+    "message": "删除选中项"
+  },
+  "optionsBulkDeleteConfirm": {
+    "message": "删除选中的 $1 条规则？"
   },
   "presetButter": {
     "message": "奶油"

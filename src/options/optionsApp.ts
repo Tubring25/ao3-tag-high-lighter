@@ -21,6 +21,7 @@ import {
 import {
   addRule as defaultAddRule,
   deleteRule as defaultDeleteRule,
+  deleteRules as defaultDeleteRules,
   listRules as defaultListRules,
   toggleRule as defaultToggleRule,
   updateRule as defaultUpdateRule,
@@ -42,10 +43,12 @@ export interface OptionsAppDeps {
   addRule(input: RuleCreateInput): Promise<Rule>;
   updateRule(id: string, patch: RuleUpdateInput): Promise<Rule>;
   deleteRule(id: string): Promise<void>;
+  deleteRules(ids: readonly string[]): Promise<void>;
   toggleRule(id: string): Promise<Rule>;
   getSettings(): Promise<Settings>;
   saveSettings(patch: Partial<Settings>): Promise<Settings>;
   confirmDelete(rule: Rule): boolean;
+  confirmBulkDelete(count: number): boolean;
   alertError(message: string): void;
   logError(error: unknown): void;
 }
@@ -66,6 +69,7 @@ export async function renderOptionsApp(
   let filterStatus: StatusFilter = "all";
   let editorMode: EditorMode = "create";
   let selectedRuleId: string | null = null;
+  let selectedRuleIds = new Set<string>();
   let editorOpen = false;
   let ruleListScrollTop = 0;
 
@@ -75,6 +79,7 @@ export async function renderOptionsApp(
   renderPage();
 
   function renderPage(): void {
+    syncSelectedRuleIds();
     container.textContent = "";
 
     const shell = document.createElement("main");
@@ -228,7 +233,7 @@ export async function renderOptionsApp(
 
     actionGroup.append(guideLink, stylesButton, addButton);
     top.append(copy, actionGroup);
-    panel.append(top, createFilterBar());
+    panel.append(top, createFilterBar(), createBulkActionBar());
 
     const content = document.createElement("div");
     content.className = editorOpen ? "options-content-grid has-editor" : "options-content-grid";
@@ -291,6 +296,7 @@ export async function renderOptionsApp(
     rememberRuleListScroll();
     const currentList = container.querySelector<HTMLElement>("[data-options-rule-list]");
     const currentEditor = container.querySelector<HTMLElement>("[data-options-editor]");
+    const currentBulkBar = container.querySelector<HTMLElement>("[data-options-bulk-bar]");
     if (!currentList || !currentEditor) {
       renderPage();
       return;
@@ -298,10 +304,34 @@ export async function renderOptionsApp(
 
     const filteredRules = getFilteredRules();
     closeEditorIfSelectionIsFilteredOut(filteredRules);
+    syncSelectedRuleIds();
 
+    currentBulkBar?.replaceWith(createBulkActionBar());
     currentList.replaceWith(createRuleList());
     currentEditor.replaceWith(createRuleEditor());
     restoreRuleListScroll();
+  }
+
+  function createBulkActionBar(): HTMLElement {
+    const bar = document.createElement("div");
+    bar.className = selectedRuleIds.size > 0 ? "options-bulk-bar is-active" : "options-bulk-bar";
+    bar.dataset.optionsBulkBar = "true";
+    if (selectedRuleIds.size === 0) return bar;
+
+    const count = document.createElement("span");
+    count.textContent = t("optionsSelectedCount", [selectedRuleIds.size]);
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "options-bulk-delete";
+    deleteButton.dataset.optionsBulkDelete = "true";
+    deleteButton.textContent = t("optionsDeleteSelected");
+    deleteButton.addEventListener("click", () => {
+      void withStorageErrorHandling(deleteSelectedRules);
+    });
+
+    bar.append(count, deleteButton);
+    return bar;
   }
 
   function closeEditorIfSelectionIsFilteredOut(filteredRules = getFilteredRules()): void {
@@ -324,6 +354,7 @@ export async function renderOptionsApp(
 
     const header = document.createElement("div");
     header.className = "options-table-header";
+    header.appendChild(createSelectAllCell(filteredRules));
     for (const label of [
       t("optionsTablePattern"),
       t("optionsTableAction"),
@@ -401,6 +432,7 @@ export async function renderOptionsApp(
     row.dataset.ruleId = rule.id;
 
     row.append(
+      createRuleSelectCell(rule),
       createPatternCell(rule.pattern),
       createBadge("rule-badge", rule.action, formatActionLabel(rule.action)),
       createCell("rule-meta", formatMatchMode(rule.matchMode)),
@@ -421,6 +453,56 @@ export async function renderOptionsApp(
   function createPatternCell(pattern: string): HTMLElement {
     const cell = createCell("rule-pattern", pattern);
     cell.title = pattern;
+    return cell;
+  }
+
+  function createSelectAllCell(filteredRules: readonly Rule[]): HTMLElement {
+    const cell = document.createElement("div");
+    cell.className = "rule-select-cell";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.dataset.optionsSelectAll = "true";
+    checkbox.ariaLabel = t("optionsSelectAllRules");
+    const selectedVisibleCount = filteredRules.filter((rule) => selectedRuleIds.has(rule.id)).length;
+    checkbox.checked = filteredRules.length > 0 && selectedVisibleCount === filteredRules.length;
+    checkbox.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < filteredRules.length;
+    checkbox.addEventListener("change", () => {
+      rememberRuleListScroll();
+      if (checkbox.checked) {
+        for (const rule of filteredRules) selectedRuleIds.add(rule.id);
+      } else {
+        for (const rule of filteredRules) selectedRuleIds.delete(rule.id);
+      }
+      renderPage();
+    });
+
+    cell.appendChild(checkbox);
+    return cell;
+  }
+
+  function createRuleSelectCell(rule: Rule): HTMLElement {
+    const cell = document.createElement("div");
+    cell.className = "rule-select-cell";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.dataset.ruleSelect = "true";
+    checkbox.dataset.ruleId = rule.id;
+    checkbox.ariaLabel = t("optionsSelectRule", [rule.pattern]);
+    checkbox.checked = selectedRuleIds.has(rule.id);
+    checkbox.addEventListener("click", (event) => event.stopPropagation());
+    checkbox.addEventListener("change", () => {
+      rememberRuleListScroll();
+      if (checkbox.checked) {
+        selectedRuleIds.add(rule.id);
+      } else {
+        selectedRuleIds.delete(rule.id);
+      }
+      renderPage();
+    });
+
+    cell.appendChild(checkbox);
     return cell;
   }
 
@@ -481,6 +563,7 @@ export async function renderOptionsApp(
         if (!deps.confirmDelete(rule)) return;
         await deps.deleteRule(rule.id);
         allRules = allRules.filter((candidate) => candidate.id !== rule.id);
+        selectedRuleIds.delete(rule.id);
         if (selectedRuleId === rule.id) closeEditor();
         if (allRules.length === 0) closeEditor();
         rememberRuleListScroll();
@@ -760,6 +843,26 @@ export async function renderOptionsApp(
     editorOpen = false;
   }
 
+  async function deleteSelectedRules(): Promise<void> {
+    const ids = [...selectedRuleIds];
+    if (ids.length === 0) return;
+    if (!deps.confirmBulkDelete(ids.length)) return;
+
+    await deps.deleteRules(ids);
+    const deletedIds = new Set(ids);
+    allRules = allRules.filter((rule) => !deletedIds.has(rule.id));
+    selectedRuleIds = new Set<string>();
+    if (selectedRuleId && deletedIds.has(selectedRuleId)) closeEditor();
+    if (allRules.length === 0) closeEditor();
+    rememberRuleListScroll();
+    renderPage();
+  }
+
+  function syncSelectedRuleIds(): void {
+    const validRuleIds = new Set(allRules.map((rule) => rule.id));
+    selectedRuleIds = new Set([...selectedRuleIds].filter((id) => validRuleIds.has(id)));
+  }
+
   function formatActionLabel(action: RuleAction): string {
     return getLocalizedActionLabel(action, settings.actionStyles);
   }
@@ -935,10 +1038,12 @@ function createRealDeps(): OptionsAppDeps {
     addRule: defaultAddRule,
     updateRule: defaultUpdateRule,
     deleteRule: defaultDeleteRule,
+    deleteRules: defaultDeleteRules,
     toggleRule: defaultToggleRule,
     getSettings: defaultGetSettings,
     saveSettings: defaultSaveSettings,
     confirmDelete: (rule) => window.confirm(t("optionsDeleteConfirm", [rule.pattern])),
+    confirmBulkDelete: (count) => window.confirm(t("optionsBulkDeleteConfirm", [count])),
     alertError: (message) => window.alert(message),
     logError: (error) => {
       console.error(`${LOG_PREFIX} Options error:`, error);

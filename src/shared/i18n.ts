@@ -9,7 +9,7 @@ import type {
 
 const EN_MESSAGES = {
   extensionName: "AO3 Tag Highlighter",
-  extensionDescription: "Highlight, warn, or collapse AO3 works based on tag rules.",
+  extensionDescription: "Mark AO3 tags, show warnings, and collapse works with your own tag rules.",
   actionHighlight: "Highlight",
   actionWarning: "Warning",
   actionWarn: "Warn",
@@ -110,6 +110,11 @@ const EN_MESSAGES = {
   optionsLocked: "Locked",
   optionsOperationFailed: "Operation failed",
   optionsDeleteConfirm: "Delete rule \"$1\"?",
+  optionsSelectedCount: "$1 selected",
+  optionsSelectRule: "Select rule “$1”",
+  optionsSelectAllRules: "Select all visible rules",
+  optionsDeleteSelected: "Delete selected",
+  optionsBulkDeleteConfirm: "Delete $1 selected rules?",
   presetButter: "Butter",
   presetMint: "Mint",
   presetSky: "Sky",
@@ -171,7 +176,7 @@ const EN_MESSAGES = {
 
 const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   extensionName: "AO3 Tag Highlighter",
-  extensionDescription: "按标签规则标记、提醒或折叠 AO3 作品。",
+  extensionDescription: "用自己的标签规则标记 AO3 标签、显示提醒并折叠作品。",
   actionHighlight: "高亮",
   actionWarning: "提醒",
   actionWarn: "提醒",
@@ -272,6 +277,11 @@ const ZH_CN_MESSAGES: Record<MessageKey, string> = {
   optionsLocked: "固定",
   optionsOperationFailed: "操作失败",
   optionsDeleteConfirm: "删除规则“$1”？",
+  optionsSelectedCount: "已选择 $1 条",
+  optionsSelectRule: "选择规则“$1”",
+  optionsSelectAllRules: "选择当前显示的全部规则",
+  optionsDeleteSelected: "删除选中项",
+  optionsBulkDeleteConfirm: "删除选中的 $1 条规则？",
   presetButter: "奶油",
   presetMint: "薄荷",
   presetSky: "天空",

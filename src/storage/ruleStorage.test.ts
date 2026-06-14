@@ -1,6 +1,7 @@
 import {
   addRule,
   deleteRule,
+  deleteRules,
   getRule,
   listRules,
   toggleRule,
@@ -226,6 +227,21 @@ describe("ruleStorage", () => {
 
     await deleteRule("missing");
     expect(store[STORAGE_KEY_RULES]).toEqual([kept]);
+  });
+
+  it("deletes multiple rules in a single storage update", async () => {
+    const kept = createStoredRule({ id: "rule-3", pattern: "Fluff" });
+    store[STORAGE_KEY_RULES] = [
+      createStoredRule({ id: "rule-1" }),
+      createStoredRule({ id: "rule-2", pattern: "Angst" }),
+      kept,
+    ];
+
+    await deleteRules(["rule-1", "rule-2", "missing"]);
+
+    expect(store[STORAGE_KEY_RULES]).toEqual([kept]);
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledWith({ type: "RULES_UPDATED" });
   });
 
   it("toggles a rule enabled state", async () => {

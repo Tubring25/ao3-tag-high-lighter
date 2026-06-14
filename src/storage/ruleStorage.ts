@@ -94,6 +94,16 @@ export async function deleteRule(id: string): Promise<void> {
   await notifyUpdate({ type: "RULES_UPDATED" });
 }
 
+export async function deleteRules(ids: readonly string[]): Promise<void> {
+  if (ids.length === 0) return;
+
+  const deletedIds = new Set(ids);
+  const rules = await listRules();
+  const nextRules = rules.filter((rule) => !deletedIds.has(rule.id));
+  await saveRules(nextRules);
+  await notifyUpdate({ type: "RULES_UPDATED" });
+}
+
 export async function toggleRule(id: string): Promise<Rule> {
   const rules = await listRules();
   const index = rules.findIndex((rule) => rule.id === id);
