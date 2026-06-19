@@ -65,7 +65,7 @@ describe("calculateHitStats", () => {
     expect(stats.hideWork).toBe(1);
   });
 
-  it("counts hideWork effects as caution on work detail pages", () => {
+  it("counts hideWork effects as collapse matches on work detail pages", () => {
     const work = createWork({ isWorkDetailPage: true });
     const stats = calculateHitStats(
       createMatchResult({

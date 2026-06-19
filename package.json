@@ -7,7 +7,9 @@
     "build": "vite build",
     "dev": "vite build --watch",
     "lint": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify": "npm run build && npm run lint && npm run test",
+    "verify:release": "npm run verify && node scripts/verify-release.mjs"
   },
   "devDependencies": {
     "jsdom": "^25.0.1",

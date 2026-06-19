@@ -10,7 +10,7 @@ const PLUGIN_OWNED_SELECTORS = [
   "[data-ao3th-toast]",
   "[data-ao3th-collapse-placeholder]",
   "[data-ao3th-warn-banner]",
-  "[data-ao3th-caution-banner]",
+  "[data-ao3th-collapse-match-banner]",
 ];
 
 let observer: MutationObserver | null = null;

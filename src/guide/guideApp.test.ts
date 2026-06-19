@@ -41,7 +41,7 @@ describe("renderGuideApp", () => {
     expect(container.querySelector("[data-active-rule-label]")?.textContent).toBe("Collapse: Gun Violence");
     expect(getButton(container, '[data-demo-tag="Gun Violence"]').className).toContain("is-hideWork");
     expect(container.textContent).toContain(
-      "This work is collapsed by a hideWork rule: Gun Violence"
+      "This work is collapsed by a collapse rule: Gun Violence"
     );
   });
 

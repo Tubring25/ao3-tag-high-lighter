@@ -119,8 +119,8 @@
   "popupStatHighlightTags": {
     "message": "$1标签"
   },
-  "popupStatCaution": {
-    "message": "隐藏提醒"
+  "popupStatCollapseWork": {
+    "message": "折叠作品"
   },
   "popupManageRules": {
     "message": "管理规则"
@@ -356,11 +356,11 @@
   "contentWarningMessage": {
     "message": "这篇作品包含需要留意的标签：$1。"
   },
-  "contentCautionNoReasons": {
-    "message": "注意：这篇作品含有你在列表页选择隐藏的标签。"
+  "contentCollapseMatchNoReasons": {
+    "message": "折叠规则命中：这篇作品含有你在列表页会折叠的标签。"
   },
-  "contentCautionMessage": {
-    "message": "注意：这篇作品含有你在列表页选择隐藏的标签：$1。"
+  "contentCollapseMatchMessage": {
+    "message": "折叠规则命中：这篇作品含有你在列表页会折叠的标签：$1。"
   },
   "contentCollapsedExpanded": {
     "message": "这篇折叠作品已临时展开。"
@@ -372,13 +372,13 @@
     "message": "展开"
   },
   "contentCollapsedNoReasons": {
-    "message": "这篇作品已按隐藏规则折叠。"
+    "message": "这篇作品已按折叠规则折叠。"
   },
   "contentCollapsedOneReason": {
-    "message": "这篇作品已按隐藏规则折叠：$1"
+    "message": "这篇作品已按折叠规则折叠：$1"
   },
   "contentCollapsedMultipleReasons": {
-    "message": "这篇作品已按隐藏规则折叠：$1"
+    "message": "这篇作品已按折叠规则折叠：$1"
   },
   "guideEyebrow": {
     "message": "AO3 Tag Highlighter 使用指南"

@@ -66,13 +66,13 @@ describe("pageObserver", () => {
     expect(callback).not.toHaveBeenCalled();
   });
 
-  it("ignores injected caution banners", async () => {
+  it("ignores injected collapse rule bars", async () => {
     document.body.innerHTML = `<main id="main"></main>`;
     const callback = vi.fn();
 
     startPageObserver(callback);
     const banner = document.createElement("div");
-    banner.dataset.ao3thCautionBanner = "true";
+    banner.dataset.ao3thCollapseMatchBanner = "true";
     document.querySelector("#main")?.appendChild(banner);
     await flushMutationObserver();
 

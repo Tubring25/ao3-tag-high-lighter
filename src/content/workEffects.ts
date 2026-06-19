@@ -3,7 +3,7 @@ import { t } from "../shared/i18n";
 
 const PLACEHOLDER_SELECTOR = "[data-ao3th-collapse-placeholder]";
 const WARN_BANNER_SELECTOR = "[data-ao3th-warn-banner]";
-const CAUTION_BANNER_SELECTOR = "[data-ao3th-caution-banner]";
+const COLLAPSE_MATCH_BANNER_SELECTOR = "[data-ao3th-collapse-match-banner]";
 const WARNING_BAR_MAX_TAGS = 4;
 
 interface WorkEffectOptions {
@@ -37,7 +37,7 @@ export function applyWorkEffects(
   if (!summary.hasHideWork) return;
 
   if (work.isWorkDetailPage) {
-    ensureDetailCautionBar(work, options.collapseReasons ?? []);
+    ensureDetailCollapseMatchBar(work, options.collapseReasons ?? []);
     return;
   }
 
@@ -58,11 +58,11 @@ export function clearWorkEffects(work: ParsedWork, options: ClearWorkEffectOptio
   delete work.element.dataset.ao3thRuleIds;
   work.element.hidden = false;
   work.element.querySelector(WARN_BANNER_SELECTOR)?.remove();
-  work.element.querySelector(CAUTION_BANNER_SELECTOR)?.remove();
+  work.element.querySelector(COLLAPSE_MATCH_BANNER_SELECTOR)?.remove();
 
   const detailMeta = findDetailMetaElement(work);
   detailMeta?.querySelector(WARN_BANNER_SELECTOR)?.remove();
-  detailMeta?.querySelector(CAUTION_BANNER_SELECTOR)?.remove();
+  detailMeta?.querySelector(COLLAPSE_MATCH_BANNER_SELECTOR)?.remove();
 
   if (!options.preserveCollapseState) {
     delete work.element.dataset.ao3thExpanded;
@@ -99,14 +99,14 @@ function ensureDetailWarningBar(work: ParsedWork, reasons: readonly string[]): v
   metaElement.prepend(banner);
 }
 
-function ensureDetailCautionBar(work: ParsedWork, reasons: readonly string[]): void {
+function ensureDetailCollapseMatchBar(work: ParsedWork, reasons: readonly string[]): void {
   const metaElement = findDetailMetaElement(work);
-  if (!metaElement || metaElement.querySelector(CAUTION_BANNER_SELECTOR)) return;
+  if (!metaElement || metaElement.querySelector(COLLAPSE_MATCH_BANNER_SELECTOR)) return;
 
   const banner = createDetailBar({
-    className: "ao3th-detail-caution-bar",
-    dataName: "ao3thCautionBanner",
-    text: buildCautionMessage(reasons),
+    className: "ao3th-detail-collapse-match-bar",
+    dataName: "ao3thCollapseMatchBanner",
+    text: buildCollapseMatchMessage(reasons),
   });
   const warningBar = metaElement.querySelector(WARN_BANNER_SELECTOR);
   warningBar?.insertAdjacentElement("afterend", banner) ?? metaElement.prepend(banner);
@@ -114,7 +114,7 @@ function ensureDetailCautionBar(work: ParsedWork, reasons: readonly string[]): v
 
 interface DetailBarOptions {
   className: string;
-  dataName: "ao3thWarnBanner" | "ao3thCautionBanner";
+  dataName: "ao3thWarnBanner" | "ao3thCollapseMatchBanner";
   text: string;
 }
 
@@ -140,9 +140,9 @@ function buildWarningMessage(reasons: readonly string[]): string {
   return t("contentWarningMessage", [reasons.join(", ")]);
 }
 
-function buildCautionMessage(reasons: readonly string[]): string {
-  if (reasons.length === 0) return t("contentCautionNoReasons");
-  return t("contentCautionMessage", [reasons.join(", ")]);
+function buildCollapseMatchMessage(reasons: readonly string[]): string {
+  if (reasons.length === 0) return t("contentCollapseMatchNoReasons");
+  return t("contentCollapseMatchMessage", [reasons.join(", ")]);
 }
 
 function ensureCollapsePlaceholder(workElement: HTMLElement, reasons: readonly string[]): void {

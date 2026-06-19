@@ -263,7 +263,7 @@ function renderStats(
   const rows: Array<[string, string, number]> = [
     [t("popupStatHighlightTags", [getLocalizedActionLabel("highlight", settings.actionStyles)]), "highlight", stats.highlight],
     [getLocalizedActionLabel("warn", settings.actionStyles), "warn", stats.warn],
-    [t("popupStatCaution"), "hideWork", stats.hideWork],
+    [t("popupStatCollapseWork"), "hideWork", stats.hideWork],
   ];
 
   for (const [label, key, count] of rows) {

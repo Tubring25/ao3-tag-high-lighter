@@ -221,13 +221,13 @@ describe("renderMatches", () => {
     expect(work.element.dataset.ao3thExpanded).toBeUndefined();
     expect(placeholder).toBeInstanceOf(HTMLButtonElement);
     expect(placeholder?.textContent).toContain(
-      "This work is collapsed by a hideWork rule: Major Character Death"
+      "This work is collapsed by a collapse rule: Major Character Death"
     );
 
     placeholder?.click();
 
     expect(work.element.dataset.ao3thExpanded).toBe("true");
-    expect(placeholder?.textContent).toContain("Hide again");
+    expect(placeholder?.textContent).toContain("Collapse again");
 
     placeholder?.click();
 
@@ -261,7 +261,7 @@ describe("renderMatches", () => {
     );
 
     expect(placeholder?.textContent).toContain(
-      "This work is collapsed by hideWork rules: Slow Burn, Major Character Death"
+      "This work is collapsed by collapse rules: Slow Burn, Major Character Death"
     );
   });
 
@@ -319,7 +319,7 @@ describe("renderMatches", () => {
     expect(work.element.querySelector("[data-ao3th-collapse-placeholder]")).toBeNull();
   });
 
-  it("shows warning and caution bars inside detail page metadata without changing article content", () => {
+  it("shows warning and collapse rule bars inside detail page metadata without changing article content", () => {
     const work = createDetailWork();
 
     renderMatches(
@@ -346,15 +346,15 @@ describe("renderMatches", () => {
     expect(meta?.querySelector("[data-ao3th-warn-banner]")?.textContent).toBe(
       "This work contains warning tags: Slow Burn."
     );
-    expect(meta?.querySelector("[data-ao3th-caution-banner]")?.textContent).toBe(
-      "Caution: This work matches tags you usually hide from listings: Major Character Death."
+    expect(meta?.querySelector("[data-ao3th-collapse-match-banner]")?.textContent).toBe(
+      "Collapse rule match: This work matches tags you collapse on listings: Major Character Death."
     );
     expect(work.tags[1].element.dataset.ao3thAction).toBe("hideWork");
     expect(work.element.querySelector("[data-ao3th-collapse-placeholder]")).toBeNull();
     expect(work.element.dataset.ao3thHidden).toBeUndefined();
     expect(articleCopy?.textContent).toBe("Original article content.");
     expect(articleCopy?.querySelector("[data-ao3th-warn-banner]")).toBeNull();
-    expect(articleCopy?.querySelector("[data-ao3th-caution-banner]")).toBeNull();
+    expect(articleCopy?.querySelector("[data-ao3th-collapse-match-banner]")).toBeNull();
   });
 
   it("does not show a detail warning bar when five or more warning tags match", () => {
@@ -392,8 +392,8 @@ describe("renderMatches", () => {
     const meta = work.element.querySelector("dl.work.meta");
 
     expect(meta?.querySelector("[data-ao3th-warn-banner]")).toBeNull();
-    expect(meta?.querySelector("[data-ao3th-caution-banner]")?.textContent).toBe(
-      "Caution: This work matches tags you usually hide from listings: Major Character Death."
+    expect(meta?.querySelector("[data-ao3th-collapse-match-banner]")?.textContent).toBe(
+      "Collapse rule match: This work matches tags you collapse on listings: Major Character Death."
     );
   });
 
@@ -422,7 +422,7 @@ describe("renderMatches", () => {
 
     const meta = work.element.querySelector("dl.work.meta");
     expect(meta?.querySelector("[data-ao3th-warn-banner]")).toBeNull();
-    expect(meta?.querySelector("[data-ao3th-caution-banner]")).toBeNull();
+    expect(meta?.querySelector("[data-ao3th-collapse-match-banner]")).toBeNull();
   });
 
   it("keeps hideWork tag background on work detail pages", () => {
@@ -492,7 +492,7 @@ describe("renderMatches", () => {
     expect(
       work.element.querySelector<HTMLButtonElement>("[data-ao3th-collapse-placeholder]")
         ?.textContent
-    ).toContain("Hide again");
+    ).toContain("Collapse again");
   });
 });
 

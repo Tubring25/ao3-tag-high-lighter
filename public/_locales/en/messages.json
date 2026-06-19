@@ -102,7 +102,7 @@
     "message": "Matches found. Turn on the extension to apply styles."
   },
   "popupPausedEmptyBody": {
-    "message": "Turn on the extension to highlight, warn, or caution works."
+    "message": "Turn on the extension to highlight, warn, or collapse works."
   },
   "popupNoMatchesTitle": {
     "message": "No rule matches on this page yet."
@@ -119,8 +119,8 @@
   "popupStatHighlightTags": {
     "message": "$1 tags"
   },
-  "popupStatCaution": {
-    "message": "Caution"
+  "popupStatCollapseWork": {
+    "message": "Collapse work"
   },
   "popupManageRules": {
     "message": "Manage rules"
@@ -356,29 +356,29 @@
   "contentWarningMessage": {
     "message": "This work contains warning tags: $1."
   },
-  "contentCautionNoReasons": {
-    "message": "Caution: This work matches tags you usually hide from listings."
+  "contentCollapseMatchNoReasons": {
+    "message": "Collapse rule match: This work matches tags you collapse on listings."
   },
-  "contentCautionMessage": {
-    "message": "Caution: This work matches tags you usually hide from listings: $1."
+  "contentCollapseMatchMessage": {
+    "message": "Collapse rule match: This work matches tags you collapse on listings: $1."
   },
   "contentCollapsedExpanded": {
     "message": "Collapsed work is expanded for this page."
   },
   "contentHideAgain": {
-    "message": "Hide again"
+    "message": "Collapse again"
   },
   "contentClickToExpand": {
     "message": "Click to expand"
   },
   "contentCollapsedNoReasons": {
-    "message": "This work is collapsed by a hideWork rule."
+    "message": "This work is collapsed by a collapse rule."
   },
   "contentCollapsedOneReason": {
-    "message": "This work is collapsed by a hideWork rule: $1"
+    "message": "This work is collapsed by a collapse rule: $1"
   },
   "contentCollapsedMultipleReasons": {
-    "message": "This work is collapsed by hideWork rules: $1"
+    "message": "This work is collapsed by collapse rules: $1"
   },
   "guideEyebrow": {
     "message": "AO3 Tag Highlighter Guide"

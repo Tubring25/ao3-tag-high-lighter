@@ -86,8 +86,8 @@ describe("renderPopupApp", () => {
     expect(container.textContent).toContain("AO3 work page");
     expect(container.textContent).toContain("Highlight tags2");
     expect(container.textContent).toContain("Warning1");
-    expect(container.textContent).toContain("Caution1");
-    expect(container.textContent).not.toContain("Collapsed works");
+    expect(container.textContent).toContain("Collapse work1");
+    expect(container.textContent).not.toContain("Caution");
     expect(container.textContent).not.toContain("Local only");
     expect(container.textContent).not.toContain("MVP");
   });

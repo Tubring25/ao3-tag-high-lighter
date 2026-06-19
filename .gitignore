@@ -12,3 +12,17 @@ coverage
 # Env
 .env
 .env.*
+# Local planning / AI workflow docs
+AGENTS.md
+.codex/
+.claude/
+.agents/
+docs/
+PRODUCT.md
+DESIGN.md
+.impeccable/
+# Design and release artifacts
+*.pen
+*.zip
+docs/40-quality/store-assets/
+public/icons/ChatGPT Image*.png
