@@ -10,6 +10,7 @@ import type {
 } from "../core/types";
 import { ACTION_STYLE_PRESETS } from "../core/actionStyles";
 import { LOG_PREFIX } from "../shared/constants";
+import { formatRuleSaveError } from "../shared/ruleError";
 import {
   getLocalizedActionLabel,
   getLocalizedCustomizableActionLabel,
@@ -72,6 +73,10 @@ export async function renderOptionsApp(
   let selectedRuleIds = new Set<string>();
   let editorOpen = false;
   let ruleListScrollTop = 0;
+  const ruleDrafts = new Map<string, RuleCreateInput>();
+  let storagePending = false;
+  let storageError = "";
+  const disabledControls = new Map<HTMLInputElement | HTMLSelectElement | HTMLButtonElement, boolean>();
 
   setLanguagePreference(settings.languagePreference);
   applyDocumentLanguage();
@@ -93,7 +98,15 @@ export async function renderOptionsApp(
     workspace.append(createSidebar(), createManagerPanel());
     shell.appendChild(workspace);
 
+    const errorNotice = document.createElement("p");
+    errorNotice.dataset.optionsError = "true";
+    errorNotice.id = "options-storage-error";
+    errorNotice.setAttribute("role", "alert");
+    errorNotice.textContent = storageError;
+    errorNotice.hidden = !storageError;
+    shell.prepend(errorNotice);
     container.appendChild(shell);
+    syncStoragePending();
     restoreRuleListScroll();
   }
 
@@ -595,6 +608,8 @@ export async function renderOptionsApp(
     const selectedRule = selectedRuleId ? allRules.find((rule) => rule.id === selectedRuleId) ?? null : null;
     const isEditing = editorMode === "edit" && selectedRule;
     const rule = isEditing ? selectedRule : null;
+    const draftKey = rule?.id ?? "create";
+    const draft = ruleDrafts.get(draftKey) ?? rule;
 
     const title = document.createElement("h2");
     title.textContent = isEditing && rule ? t("optionsEditingRule", [rule.pattern]) : t("optionsNewRule");
@@ -611,13 +626,14 @@ export async function renderOptionsApp(
 
     const form = document.createElement("form");
     form.dataset.ruleForm = "true";
+    form.setAttribute("aria-describedby", "options-storage-error");
 
     form.append(
-      createTextField("pattern", t("optionsFieldPattern"), rule?.pattern ?? ""),
-      createSelectField("action", t("optionsFieldAction"), ACTIONS, rule?.action ?? "highlight", formatActionLabel),
-      createSelectField("matchMode", t("optionsFieldMatchMode"), MATCH_MODES, rule?.matchMode ?? "exact", formatMatchMode),
-      createSelectField("category", t("optionsFieldCategory"), CATEGORIES, rule?.category ?? "all", formatCategory),
-      createCheckboxField("enabled", t("labelEnabled"), rule?.enabled ?? true)
+      createTextField("pattern", t("optionsFieldPattern"), draft?.pattern ?? ""),
+      createSelectField("action", t("optionsFieldAction"), ACTIONS, draft?.action ?? "highlight", formatActionLabel),
+      createSelectField("matchMode", t("optionsFieldMatchMode"), MATCH_MODES, draft?.matchMode ?? "exact", formatMatchMode),
+      createSelectField("category", t("optionsFieldCategory"), CATEGORIES, draft?.category ?? "all", formatCategory),
+      createCheckboxField("enabled", t("labelEnabled"), draft?.enabled ?? true)
     );
 
     const footer = document.createElement("div");
@@ -630,10 +646,15 @@ export async function renderOptionsApp(
     footer.appendChild(submit);
     form.appendChild(footer);
 
+    const saveDraft = (): void => { ruleDrafts.set(draftKey, readRuleForm(form)); };
+    form.addEventListener("input", saveDraft);
+    form.addEventListener("change", saveDraft);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
+      if (storagePending) return;
+      saveDraft();
+      const input = readRuleForm(form);
       void withStorageErrorHandling(async () => {
-        const input = readRuleForm(form);
 
         if (isEditing && rule) {
           const updated = await deps.updateRule(rule.id, input);
@@ -643,9 +664,10 @@ export async function renderOptionsApp(
           allRules = [...allRules, created];
         }
 
+        ruleDrafts.delete(draftKey);
         closeEditor();
         renderPage();
-      });
+      }, true);
     });
 
     editor.append(mode, title, hint, form);
@@ -799,13 +821,39 @@ export async function renderOptionsApp(
     return wrapper;
   }
 
-  async function withStorageErrorHandling(operation: () => Promise<void>): Promise<void> {
+  function syncStoragePending(): void {
+    container.setAttribute("aria-busy", String(storagePending));
+    if (storagePending) {
+      for (const control of container.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>("input, select, button")) {
+        if (!disabledControls.has(control)) disabledControls.set(control, control.disabled);
+        control.disabled = true;
+      }
+    } else {
+      for (const [control, disabled] of disabledControls) control.disabled = disabled;
+      disabledControls.clear();
+    }
+  }
+
+  async function withStorageErrorHandling(operation: () => Promise<void>, isRuleSave = false): Promise<void> {
+    if (storagePending) return;
+    storagePending = true;
+    storageError = "";
+    const notice = container.querySelector<HTMLElement>("[data-options-error]");
+    if (notice) { notice.textContent = ""; notice.hidden = true; }
     try {
-      await operation();
+      const pending = operation();
+      syncStoragePending();
+      await pending;
     } catch (error) {
       deps.logError(error);
-      deps.alertError(error instanceof Error ? error.message : t("optionsOperationFailed"));
-      renderPage();
+      storageError = isRuleSave ? formatRuleSaveError(error) : t("optionsOperationFailed");
+      if (!isRuleSave) deps.alertError(error instanceof Error ? error.message : t("optionsOperationFailed"));
+      if (notice) { notice.textContent = storageError; notice.hidden = false; }
+      if (!isRuleSave && editorMode !== "styles") renderPage();
+    } finally {
+      storagePending = false;
+      syncStoragePending();
+      if (isRuleSave && storageError) container.querySelector<HTMLButtonElement>("[data-rule-form] [type=submit]")?.focus();
     }
   }
 
@@ -830,6 +878,7 @@ export async function renderOptionsApp(
   }
 
   function openEditEditor(ruleId: string): void {
+    if (storagePending) return;
     rememberRuleListScroll();
     editorMode = "edit";
     selectedRuleId = ruleId;
@@ -860,6 +909,9 @@ export async function renderOptionsApp(
 
   function syncSelectedRuleIds(): void {
     const validRuleIds = new Set(allRules.map((rule) => rule.id));
+    for (const key of ruleDrafts.keys()) {
+      if (key !== "create" && !validRuleIds.has(key)) ruleDrafts.delete(key);
+    }
     selectedRuleIds = new Set([...selectedRuleIds].filter((id) => validRuleIds.has(id)));
   }
 
@@ -869,7 +921,7 @@ export async function renderOptionsApp(
 
   function closeEditorOnOutsideClick(event: MouseEvent): void {
     const target = event.target;
-    if (!editorOpen || !(target instanceof Element)) return;
+    if (storagePending || !editorOpen || !(target instanceof Element)) return;
     if (
       target.closest("[data-options-editor]") ||
       target.closest("[data-options-rule-list]") ||

@@ -1,4 +1,6 @@
 import type { RuntimeMessage } from "../shared/message";
+import type { StorageMutationResponse } from "../storage/mutationClient";
+import { createStorageMutationQueue, isStorageMutation } from "./storageMutations";
 import { LOG_PREFIX } from "../shared/constants";
 
 export interface BackgroundTab {
@@ -9,15 +11,13 @@ export interface BackgroundInstalledDetails {
   reason: "install" | "update" | string;
 }
 
-export interface BackgroundMessageResponse {
-  ok: true;
-}
+export type BackgroundMessageResponse = StorageMutationResponse;
 
 export interface BackgroundAppDeps {
   queryAo3Tabs(): Promise<BackgroundTab[]>;
   sendMessageToTab(tabId: number, message: RuntimeMessage): Promise<unknown>;
   addMessageListener(
-    callback: (message: unknown, sendResponse?: (response: BackgroundMessageResponse) => void) => void
+    callback: (message: unknown, sendResponse?: (response: BackgroundMessageResponse) => void) => boolean | void
   ): void;
   addInstalledListener(callback: (details: BackgroundInstalledDetails) => void): void;
   logInfo(message: string): void;
@@ -36,7 +36,7 @@ interface ChromeLike {
           message: unknown,
           sender: unknown,
           sendResponse: (response: BackgroundMessageResponse) => void
-        ) => void
+        ) => boolean | void
       ): void;
     };
     onInstalled?: {
@@ -50,7 +50,24 @@ const AO3_TAB_URL_PATTERN = "https://archiveofourown.org/*";
 export function initBackgroundApp(deps: BackgroundAppDeps = createRealDeps()): void {
   deps.logInfo("AO3 Tag Highlighter background worker loaded.");
 
+  const enqueueMutation = createStorageMutationQueue();
   deps.addMessageListener((message, sendResponse) => {
+    if (isStorageMutation(message)) {
+      void enqueueMutation(message).then(async (response) => {
+        try {
+          if (response.ok) {
+            const type = message.operation === "saveSettings" || message.operation === "resetSettings"
+              ? "SETTINGS_UPDATED" : "RULES_UPDATED";
+            await broadcastToAo3Tabs(deps, { type });
+          }
+        } catch (error) {
+          deps.logError(error);
+        } finally {
+          sendResponse?.(response);
+        }
+      }).catch(deps.logError);
+      return true;
+    }
     if (!isRuntimeMessage(message)) return;
 
     sendResponse?.({ ok: true });
@@ -115,7 +132,7 @@ function createRealDeps(): BackgroundAppDeps {
       }
 
       onMessage.addListener((message, _sender, sendResponse) => {
-        callback(message, sendResponse);
+        return callback(message, sendResponse);
       });
     },
     addInstalledListener: (callback) => {

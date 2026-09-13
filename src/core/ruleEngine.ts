@@ -1,11 +1,11 @@
 import type { MatchResult, ParsedWork, Rule, TagMatch, WorkMatchSummary } from "./types";
 import { normalizeTagText } from "./normalize";
-import { compileWildcardPattern } from "./wildcard";
+import { compileWildcardPattern, type WildcardMatcher } from "./wildcard";
 
 interface PreparedRule {
   rule: Rule;
   normalizedPattern: string;
-  wildcardRegex: RegExp | null;
+  wildcardRegex: WildcardMatcher | null;
 }
 
 export function matchRules(works: readonly ParsedWork[], rules: readonly Rule[]): MatchResult {

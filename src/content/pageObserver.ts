@@ -25,13 +25,17 @@ export function startPageObserver(
   if (!target) return;
 
   observer = new MutationObserver((mutations) => {
-    if (mutations.some(isRelevantMutation)) {
+    const removedPluginNodes = mutations
+      .filter((mutation) => isPluginOwned(mutation.target))
+      .flatMap((mutation) => Array.from(mutation.removedNodes));
+    if (mutations.some((mutation) => isRelevantMutation(mutation, removedPluginNodes))) {
       onDomChange();
     }
   });
 
   observer.observe(target, {
     childList: true,
+    characterData: true,
     subtree: true,
   });
 }
@@ -52,7 +56,9 @@ function findObserverTarget(options: PageObserverOptions): Node | null {
   return document.body;
 }
 
-function isRelevantMutation(mutation: MutationRecord): boolean {
+function isRelevantMutation(mutation: MutationRecord, removedPluginNodes: readonly Node[]): boolean {
+  if (isPluginOwned(mutation.target) || removedPluginNodes.some((node) => node.contains(mutation.target))) return false;
+  if (mutation.type === "characterData") return true;
   if (mutation.type !== "childList") return false;
 
   return (
@@ -62,14 +68,12 @@ function isRelevantMutation(mutation: MutationRecord): boolean {
 }
 
 function hasRelevantNodes(nodes: NodeList): boolean {
-  return Array.from(nodes).some((node) => node instanceof Element && !isPluginOwned(node));
+  return Array.from(nodes).some(
+    (node) => (node instanceof Element || node instanceof Text) && !isPluginOwned(node)
+  );
 }
 
-function isPluginOwned(element: Element): boolean {
-  return PLUGIN_OWNED_SELECTORS.some(
-    (selector) =>
-      element.matches(selector) ||
-      Boolean(element.closest(selector)) ||
-      Boolean(element.querySelector(selector))
-  );
+function isPluginOwned(node: Node): boolean {
+  const element = node instanceof Element ? node : node.parentElement;
+  return Boolean(element?.closest(PLUGIN_OWNED_SELECTORS.join(",")));
 }

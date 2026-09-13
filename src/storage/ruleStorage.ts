@@ -1,3 +1,4 @@
+import { requestMutation } from "./mutationClient";
 import type { Rule } from "../core/types";
 import { normalizeTagText } from "../core/normalize";
 import { STORAGE_KEY_RULES } from "../shared/constants";
@@ -43,10 +44,10 @@ export async function getRule(id: string): Promise<Rule | null> {
   return rules.find((rule) => rule.id === id) ?? null;
 }
 
-export async function addRule(input: RuleCreateInput): Promise<Rule> {
+async function addRuleLocally(input: RuleCreateInput): Promise<Rule> {
   validateRuleInput(input);
 
-  const rules = await listRules();
+  const rules = await readRulesStrict();
   assertNoDuplicateRule(input, rules);
 
   const now = Date.now();
@@ -62,8 +63,8 @@ export async function addRule(input: RuleCreateInput): Promise<Rule> {
   return rule;
 }
 
-export async function updateRule(id: string, patch: RuleUpdateInput): Promise<Rule> {
-  const rules = await listRules();
+async function updateRuleLocally(id: string, patch: RuleUpdateInput): Promise<Rule> {
+  const rules = await readRulesStrict();
   const index = rules.findIndex((rule) => rule.id === id);
   if (index === -1) {
     throw new Error(`Rule not found: ${id}`);
@@ -87,25 +88,25 @@ export async function updateRule(id: string, patch: RuleUpdateInput): Promise<Ru
   return updated;
 }
 
-export async function deleteRule(id: string): Promise<void> {
-  const rules = await listRules();
+async function deleteRuleLocally(id: string): Promise<void> {
+  const rules = await readRulesStrict();
   const nextRules = rules.filter((rule) => rule.id !== id);
   await saveRules(nextRules);
   await notifyUpdate({ type: "RULES_UPDATED" });
 }
 
-export async function deleteRules(ids: readonly string[]): Promise<void> {
+async function deleteRulesLocally(ids: readonly string[]): Promise<void> {
   if (ids.length === 0) return;
 
   const deletedIds = new Set(ids);
-  const rules = await listRules();
+  const rules = await readRulesStrict();
   const nextRules = rules.filter((rule) => !deletedIds.has(rule.id));
   await saveRules(nextRules);
   await notifyUpdate({ type: "RULES_UPDATED" });
 }
 
-export async function toggleRule(id: string): Promise<Rule> {
-  const rules = await listRules();
+async function toggleRuleLocally(id: string): Promise<Rule> {
+  const rules = await readRulesStrict();
   const index = rules.findIndex((rule) => rule.id === id);
   if (index === -1) {
     throw new Error(`Rule not found: ${id}`);
@@ -204,3 +205,27 @@ function getChrome(): ChromeLike {
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+async function readRulesStrict(): Promise<Rule[]> {
+  const result = await getChrome().storage.local.get(STORAGE_KEY_RULES);
+  const rules = result[STORAGE_KEY_RULES];
+  if (rules === undefined) return [];
+  if (!Array.isArray(rules) || !rules.every(isValidStoredRule)) {
+    throw new Error("Invalid stored rules; refusing to overwrite existing data");
+  }
+  return rules;
+}
+
+export const addRule = (input: RuleCreateInput): Promise<Rule> => requestMutation("addRule", input);
+export const updateRule = (id: string, patch: RuleUpdateInput): Promise<Rule> => requestMutation("updateRule", id, patch);
+export const deleteRule = (id: string): Promise<void> => requestMutation("deleteRule", id);
+export const deleteRules = (ids: readonly string[]): Promise<void> => requestMutation("deleteRules", ids);
+export const toggleRule = (id: string): Promise<Rule> => requestMutation("toggleRule", id);
+
+export const ruleMutationHandlers = {
+  addRule: addRuleLocally,
+  updateRule: updateRuleLocally,
+  deleteRule: deleteRuleLocally,
+  deleteRules: deleteRulesLocally,
+  toggleRule: toggleRuleLocally,
+};

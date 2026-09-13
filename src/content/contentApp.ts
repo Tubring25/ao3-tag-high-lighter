@@ -144,8 +144,15 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
   }
 
   function refreshWorks(): void {
+    const expandedWorkIds = new Set(
+      cachedWorks.filter((work) => work.element.dataset.ao3thExpanded === "true").map((work) => work.id)
+    );
+    if (cachedWorks.length > 0) safeClearRenderedMatches();
     try {
       cachedWorks = deps.parseAo3Works(deps.root);
+      for (const work of cachedWorks) {
+        if (expandedWorkIds.has(work.id)) work.element.dataset.ao3thExpanded = "true";
+      }
     } catch (error) {
       cachedWorks = [];
       latestMatchResult = null;
@@ -154,7 +161,7 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
   }
 
   function handleDomChanged(): void {
-    safeClearRenderedMatches();
+    if (!cachedSettings?.extensionEnabled) return;
     refreshWorks();
     runMatchAndRender();
     syncHoverMenu();

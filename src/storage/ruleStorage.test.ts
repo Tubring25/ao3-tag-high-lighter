@@ -1,3 +1,4 @@
+import { createStorageMutationQueue, isStorageMutation } from "../background/storageMutations";
 import {
   addRule,
   deleteRule,
@@ -35,6 +36,8 @@ describe("ruleStorage", () => {
     }
 
     sendMessage.mockReset();
+    const enqueue = createStorageMutationQueue();
+    sendMessage.mockImplementation((message: unknown) => isStorageMutation(message) ? enqueue(message) : Promise.resolve());
     vi.stubGlobal("chrome", {
       storage: {
         local: {
@@ -240,7 +243,8 @@ describe("ruleStorage", () => {
     await deleteRules(["rule-1", "rule-2", "missing"]);
 
     expect(store[STORAGE_KEY_RULES]).toEqual([kept]);
-    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(sendMessage).toHaveBeenCalledWith({ type: "STORAGE_MUTATION", operation: "deleteRules", args: [["rule-1", "rule-2", "missing"]] });
     expect(sendMessage).toHaveBeenCalledWith({ type: "RULES_UPDATED" });
   });
 
@@ -280,7 +284,9 @@ describe("ruleStorage", () => {
   });
 
   it("keeps writes successful when update notification has no listener", async () => {
-    sendMessage.mockRejectedValueOnce(new Error("No listener"));
+    const enqueue = createStorageMutationQueue();
+    sendMessage.mockImplementation((message: unknown) => isStorageMutation(message)
+      ? enqueue(message) : Promise.reject(new Error("No listener")));
 
     const rule = await addRule({
       pattern: "Fluff",

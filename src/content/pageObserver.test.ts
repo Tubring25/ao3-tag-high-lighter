@@ -27,17 +27,58 @@ describe("pageObserver", () => {
     expect(callback).toHaveBeenCalledTimes(1);
   });
 
-  it("ignores attribute and text changes", async () => {
+  it("ignores attributes but observes text changes", async () => {
     document.body.innerHTML = `<main id="main"><p id="target">Old</p></main>`;
     const callback = vi.fn();
 
     startPageObserver(callback);
     document.querySelector("#target")?.setAttribute("data-test", "changed");
+    await flushMutationObserver();
+    expect(callback).not.toHaveBeenCalled();
     const text = document.querySelector("#target")?.firstChild;
     if (text) text.textContent = "New";
     await flushMutationObserver();
 
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it("observes replacement and removal of host text nodes", async () => {
+    document.body.innerHTML = `<main id="main"><a class="tag">Old</a></main>`;
+    const callback = vi.fn();
+    startPageObserver(callback);
+    const tag = document.querySelector("a")!;
+    tag.textContent = "New";
+    await flushMutationObserver();
+    tag.firstChild!.remove();
+    await flushMutationObserver();
+    expect(callback).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores plugin text and nested children, including removals", async () => {
+    document.body.innerHTML = `<main id="main"><button data-ao3th-collapse-placeholder><span>Old</span></button></main>`;
+    const callback = vi.fn();
+    startPageObserver(callback);
+    const span = document.querySelector("span")!;
+    span.firstChild!.textContent = "Changed";
+    await flushMutationObserver();
+    span.textContent = "Replaced";
+    span.append(document.createElement("strong"));
+    span.remove();
+    await flushMutationObserver();
     expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("observes added and removed host containers containing plugin descendants", async () => {
+    document.body.innerHTML = `<main id="main"></main>`;
+    const callback = vi.fn();
+    startPageObserver(callback);
+    const host = document.createElement("article");
+    host.innerHTML = `<div data-ao3th-warn-banner>Warning</div><a class="tag">New tag</a>`;
+    document.querySelector("main")!.append(host);
+    await flushMutationObserver();
+    host.remove();
+    await flushMutationObserver();
+    expect(callback).toHaveBeenCalledTimes(2);
   });
 
   it("ignores plugin-owned DOM changes", async () => {
