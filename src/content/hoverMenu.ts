@@ -1,6 +1,7 @@
 import type { ParsedTag, ParsedWork, Rule, Settings } from "../core/types";
 import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
 import { LOG_PREFIX } from "../shared/constants";
+import { formatRuleSaveError } from "../shared/ruleError";
 import { getEffectiveLanguageTag, getLocalizedCustomizableActionLabel, t } from "../shared/i18n";
 import { addRule as defaultAddRule } from "../storage/ruleStorage";
 import { showToast as defaultShowToast } from "./toast";
@@ -54,10 +55,49 @@ export function mountHoverMenu(
         showButton(tag.element);
       });
 
+      const previousDescription = tag.element.getAttribute("aria-description");
+      const previousShortcut = tag.element.getAttribute("aria-keyshortcuts");
+      tag.element.setAttribute("aria-description", [previousDescription, t("hoverKeyboardHint")].filter(Boolean).join(". "));
+      tag.element.setAttribute("aria-keyshortcuts", "Alt+ArrowDown");
+      removeListeners.push(() => {
+        if (previousDescription === null) tag.element.removeAttribute("aria-description");
+        else tag.element.setAttribute("aria-description", previousDescription);
+        if (previousShortcut === null) tag.element.removeAttribute("aria-keyshortcuts");
+        else tag.element.setAttribute("aria-keyshortcuts", previousShortcut);
+      });
+      addManagedListener(tag.element, "focus", () => {
+        cancelHide();
+        if (isMenuOpen()) return;
+        currentTag = tag;
+        setHoveredTagElement(tag.element);
+        showButton(tag.element);
+      });
+      addManagedListener(tag.element, "keydown", (event) => {
+        if (!(event instanceof KeyboardEvent)) return;
+        if (event.key === "Tab" && !event.shiftKey && hoverButton && !hoverButton.hidden && !isMenuOpen()) {
+          event.preventDefault();
+          hoverButton.focus();
+          return;
+        }
+        if (!event.altKey || event.key !== "ArrowDown") return;
+        event.preventDefault();
+        currentTag = tag;
+        showButton(tag.element);
+        showMenu();
+      });
+      addManagedListener(tag.element, "blur", scheduleHide);
       addManagedListener(tag.element, "mouseleave", scheduleHide);
     }
   }
 
+  addManagedListener(hoverButton, "keydown", (event) => {
+    if (!(event instanceof KeyboardEvent)) return;
+    if (event.key === "ArrowDown") { event.preventDefault(); showMenu(); }
+    if (event.key === "Tab") {
+      if (event.shiftKey) event.preventDefault();
+      hideMenuAndButton();
+    }
+  });
   addManagedListener(hoverButton, "mouseenter", cancelHide);
   addManagedListener(hoverButton, "mouseleave", scheduleHide);
   addManagedListener(hoverButton, "click", (event) => {
@@ -73,7 +113,26 @@ export function mountHoverMenu(
     });
   });
 
-  addManagedListener(document, "click", hideMenuAndButton);
+  addManagedListener(hoverMenu, "keydown", (event) => {
+    if (!(event instanceof KeyboardEvent) || !hoverMenu) return;
+    const items = Array.from(hoverMenu.querySelectorAll<HTMLButtonElement>("[data-ao3th-menu-option]:not(:disabled)"));
+    const index = items.indexOf(shadowRoot?.activeElement as HTMLButtonElement);
+    let next: number;
+    if (event.key === "ArrowDown") next = (index + 1) % items.length;
+    else if (event.key === "ArrowUp") next = (index - 1 + items.length) % items.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = items.length - 1;
+    else if (event.key === "Tab") { hideMenuAndButton(); return; }
+    else return;
+    event.preventDefault();
+    items[next]?.focus();
+  });
+  addManagedListener(root, "focusin", cancelHide);
+  addManagedListener(root, "focusout", scheduleHide);
+  addManagedListener(document, "click", (event) => {
+    if (shadowHost && event.composedPath().includes(shadowHost)) return;
+    hideMenuAndButton();
+  });
   addManagedListener(document, "keydown", (event) => {
     if (event instanceof KeyboardEvent && event.key === "Escape") {
       hideMenuAndButton();
@@ -83,6 +142,7 @@ export function mountHoverMenu(
 }
 
 export function unmountHoverMenu(): void {
+  const returnTarget = shadowRoot?.activeElement ? lockedMenuTag?.element ?? currentTag?.element : null;
   if (hideTimeout) {
     clearTimeout(hideTimeout);
     hideTimeout = null;
@@ -101,6 +161,7 @@ export function unmountHoverMenu(): void {
   shadowRoot = null;
   shadowHost?.remove();
   shadowHost = null;
+  if (returnTarget?.isConnected) returnTarget.focus();
 }
 
 async function handleMenuClick(
@@ -118,16 +179,35 @@ async function handleMenuClick(
   if (!isRuleAction(action)) return;
 
   const selectedTag = lockedMenuTag;
-  await (options.addRule ?? defaultAddRule)({
-    pattern: selectedTag.text,
-    action,
-    matchMode: "exact",
-    category: selectedTag.category,
-    enabled: true,
-    source: "quickAdd",
-  });
+  const menu = hoverMenu;
+  if (!menu || menu.getAttribute("aria-busy") === "true") return;
+  const buttons = Array.from(menu.querySelectorAll<HTMLButtonElement>("button"));
+  const errorNotice = menu.querySelector<HTMLElement>("[role=alert]");
+  if (errorNotice) errorNotice.textContent = "";
+  menu.setAttribute("aria-busy", "true");
+  buttons.forEach((button) => { button.disabled = true; });
+  menu.focus();
+  try {
+    await (options.addRule ?? defaultAddRule)({
+      pattern: selectedTag.text,
+      action,
+      matchMode: "exact",
+      category: selectedTag.category,
+      enabled: true,
+      source: "quickAdd",
+    });
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Hover menu error:`, error);
+    if (errorNotice) errorNotice.textContent = formatRuleSaveError(error);
+    option.textContent = `${getQuickAddActionLabel(action, settings)} — ${t("ruleRetry")}`;
+    return;
+  } finally {
+    menu.setAttribute("aria-busy", "false");
+    buttons.forEach((button) => { button.disabled = false; });
+    if (menu === hoverMenu && isMenuOpen()) option.focus();
+  }
 
-  hideMenuAndButton();
+  if (menu === hoverMenu) hideMenuAndButton();
   await options.onRuleCreated();
 
   if (settings.showToast) {
@@ -260,6 +340,8 @@ function createButton(): HTMLButtonElement {
   button.dataset.ao3thActive = "false";
   button.setAttribute("aria-label", t("hoverQuickAddAria"));
   button.setAttribute("aria-expanded", "false");
+  button.setAttribute("aria-haspopup", "menu");
+  button.setAttribute("aria-controls", "ao3th-quick-add-menu");
   button.hidden = true;
   return button;
 }
@@ -267,6 +349,8 @@ function createButton(): HTMLButtonElement {
 function createMenu(settings: Settings): HTMLElement {
   const menu = document.createElement("div");
   menu.dataset.ao3thHoverMenu = "true";
+  menu.id = "ao3th-quick-add-menu";
+  menu.tabIndex = -1;
   menu.setAttribute("role", "menu");
   menu.setAttribute("aria-label", t("hoverMenuAria"));
   menu.hidden = true;
@@ -287,7 +371,10 @@ function createMenu(settings: Settings): HTMLElement {
     options.appendChild(option);
   }
 
-  menu.append(title, options);
+  const errorNotice = document.createElement("p");
+  errorNotice.setAttribute("role", "alert");
+  errorNotice.style.overflowWrap = "anywhere";
+  menu.append(title, options, errorNotice);
   return menu;
 }
 
@@ -319,7 +406,10 @@ function showButton(tagElement: HTMLElement): void {
 }
 
 function showMenu(): void {
-  if (!hoverMenu || !hoverButton || !currentTag) return;
+  if (!hoverMenu || !hoverButton || !currentTag || hoverMenu.getAttribute("aria-busy") === "true") return;
+  cancelHide();
+  const errorNotice = hoverMenu.querySelector<HTMLElement>("[role=alert]");
+  if (errorNotice) errorNotice.textContent = "";
 
   lockedMenuTag = currentTag;
   updateMenuContext(hoverMenu, lockedMenuTag);
@@ -341,12 +431,17 @@ function showMenu(): void {
 }
 
 function hideMenuAndButton(): void {
+  const returnTarget = lockedMenuTag?.element ?? currentTag?.element;
+  const restoreFocus = Boolean(shadowRoot?.activeElement);
+  cancelHide();
   hoverButton?.setAttribute("hidden", "");
   if (hoverButton) {
     hoverButton.dataset.ao3thActive = "false";
     hoverButton.setAttribute("aria-expanded", "false");
   }
   hoverMenu?.setAttribute("hidden", "");
+  if (restoreFocus && returnTarget?.isConnected) returnTarget.focus();
+  hoverButton?.setAttribute("hidden", "");
   currentTag = null;
   lockedMenuTag = null;
   setHoveredTagElement(null);
@@ -354,7 +449,10 @@ function hideMenuAndButton(): void {
 
 function scheduleHide(): void {
   cancelHide();
-  hideTimeout = setTimeout(hideMenuAndButton, HIDE_DELAY_MS);
+  hideTimeout = setTimeout(() => {
+    if (shadowRoot?.activeElement || document.activeElement === currentTag?.element) return;
+    hideMenuAndButton();
+  }, HIDE_DELAY_MS);
 }
 
 function cancelHide(): void {

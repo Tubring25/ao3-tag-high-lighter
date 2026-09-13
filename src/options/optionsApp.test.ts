@@ -391,6 +391,72 @@ function createDeps(overrides: Partial<OptionsAppDeps> = {}): OptionsAppDeps {
   };
 }
 
+describe("options rule save recovery", () => {
+  it.each(["create", "edit"])("keeps every %s draft field on failure and retry", async (mode) => {
+    const container = document.createElement("div");
+    const save = vi.fn().mockRejectedValueOnce(new Error("Disk unavailable")).mockResolvedValue(createRule({ pattern: "Draft" }));
+    const deps = createDeps(mode === "create" ? { addRule: save } : { updateRule: save });
+    await renderOptionsApp(container, deps);
+    getButton(container, mode === "create" ? "[data-options-add]" : "[data-rule-action=edit]").click();
+    const form = getForm(container);
+    getInput(form, "[name=pattern]").value = "Draft";
+    getSelect(form, "[name=action]").value = "hideWork";
+    getSelect(form, "[name=matchMode]").value = "wildcard";
+    getSelect(form, "[name=category]").value = "character";
+    getInput(form, "[name=enabled]").checked = false;
+    form.dispatchEvent(new Event("input", { bubbles: true }));
+    form.dispatchEvent(new Event("submit", { cancelable: true }));
+    expect(getButton(form, "[type=submit]").disabled).toBe(true);
+    form.dispatchEvent(new Event("submit", { cancelable: true }));
+    expect(save).toHaveBeenCalledTimes(1);
+    await flushAsyncHandlers();
+    expect(getForm(container)).toBe(form);
+    expect(container.querySelector("[role=alert]")?.textContent).toContain("try saving again");
+    expect(getButton(form, "[type=submit]").disabled).toBe(false);
+    getButton(container, "[data-sidebar-status-filter=all]").click();
+    if (mode === "edit") getButton(container, "[data-rule-action=edit]").click();
+    else getButton(container, "[data-options-add]").click();
+    const restored = getForm(container);
+    expect(getInput(restored, "[name=pattern]").value).toBe("Draft");
+    expect(getSelect(restored, "[name=action]").value).toBe("hideWork");
+    expect(getSelect(restored, "[name=matchMode]").value).toBe("wildcard");
+    expect(getSelect(restored, "[name=category]").value).toBe("character");
+    expect(getInput(restored, "[name=enabled]").checked).toBe(false);
+    restored.dispatchEvent(new Event("submit", { cancelable: true }));
+    await flushAsyncHandlers();
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(container.querySelector("[role=alert]")?.textContent).toBe("");
+    expect(getEditor(container).ariaHidden).toBe("true");
+  });
+
+  it("keeps create and per-rule edit drafts independent across switches", async () => {
+    const container = document.createElement("div");
+    await renderOptionsApp(container, createDeps());
+    getButton(container, "[data-options-add]").click();
+    getInput(container, "[name=pattern]").value = "New draft";
+    getForm(container).dispatchEvent(new Event("input"));
+    getButton(container, "[data-rule-action=edit][data-rule-id=rule-1]").click();
+    expect(getInput(container, "[name=pattern]").value).toBe("Slow Burn");
+    getInput(container, "[name=pattern]").value = "Edit draft";
+    getForm(container).dispatchEvent(new Event("input"));
+    getButton(container, "[data-options-add]").click();
+    expect(getInput(container, "[name=pattern]").value).toBe("New draft");
+    getButton(container, "[data-rule-action=edit][data-rule-id=rule-1]").click();
+    expect(getInput(container, "[name=pattern]").value).toBe("Edit draft");
+  });
+
+  it("explains duplicate rules without clearing the form", async () => {
+    const container = document.createElement("div");
+    await renderOptionsApp(container, createDeps({ addRule: vi.fn().mockRejectedValue(new Error("Duplicate rule: Slow Burn")) }));
+    getButton(container, "[data-options-add]").click();
+    getInput(container, "[name=pattern]").value = "Slow Burn";
+    getForm(container).dispatchEvent(new Event("submit", { cancelable: true }));
+    await flushAsyncHandlers();
+    expect(container.querySelector("[role=alert]")?.textContent).toContain("already exists");
+    expect(getInput(container, "[name=pattern]").value).toBe("Slow Burn");
+  });
+});
+
 function createRule(overrides: Partial<Rule> = {}): Rule {
   return {
     id: "rule-1",

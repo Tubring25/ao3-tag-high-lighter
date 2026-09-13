@@ -1,3 +1,4 @@
+import { requestMutation } from "./mutationClient";
 import type { Settings } from "../core/types";
 import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
 import { STORAGE_KEY_SETTINGS } from "../shared/constants";
@@ -27,21 +28,16 @@ interface ChromeLike {
 
 export async function getSettings(): Promise<Settings> {
   try {
-    const result = await getChrome().storage.local.get(STORAGE_KEY_SETTINGS);
-    const stored = result[STORAGE_KEY_SETTINGS];
-    const settings = mergeSettings(stored);
-
-    validateSettingsInput(settings);
-    return settings;
+    return await readSettingsStrict();
   } catch {
     return cloneDefaultSettings();
   }
 }
 
-export async function saveSettings(patch: Partial<Settings>): Promise<Settings> {
+async function saveSettingsLocally(patch: Partial<Settings>): Promise<Settings> {
   validateSettingsInput(patch);
 
-  const current = await getSettings();
+  const current = await readSettingsStrict();
   const updated = mergeSettings({ ...current, ...patch });
   validateSettingsInput(updated);
 
@@ -50,7 +46,8 @@ export async function saveSettings(patch: Partial<Settings>): Promise<Settings> 
   return updated;
 }
 
-export async function resetSettings(): Promise<Settings> {
+async function resetSettingsLocally(): Promise<Settings> {
+  await readSettingsStrict();
   const defaults = cloneDefaultSettings();
   await getChrome().storage.local.set({ [STORAGE_KEY_SETTINGS]: defaults });
   await notifyUpdate({ type: "SETTINGS_UPDATED" });
@@ -169,3 +166,21 @@ function getChrome(): ChromeLike {
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+async function readSettingsStrict(): Promise<Settings> {
+  const result = await getChrome().storage.local.get(STORAGE_KEY_SETTINGS);
+  const stored = result[STORAGE_KEY_SETTINGS];
+  if (stored !== undefined && !isObjectRecord(stored)) throw new Error("Invalid stored settings");
+  if (stored !== undefined) validateSettingsInput(stored as Partial<Settings>);
+  const settings = mergeSettings(stored);
+  validateSettingsInput(settings);
+  return settings;
+}
+
+export const saveSettings = (patch: Partial<Settings>): Promise<Settings> => requestMutation("saveSettings", patch);
+export const resetSettings = (): Promise<Settings> => requestMutation("resetSettings");
+
+export const settingsMutationHandlers = {
+  saveSettings: saveSettingsLocally,
+  resetSettings: resetSettingsLocally,
+};

@@ -1,3 +1,4 @@
+import { createStorageMutationQueue, isStorageMutation } from "../background/storageMutations";
 import {
   DEFAULT_SETTINGS,
   getSettings,
@@ -18,6 +19,8 @@ describe("settingsStorage", () => {
     }
 
     sendMessage.mockReset();
+    const enqueue = createStorageMutationQueue();
+    sendMessage.mockImplementation((message: unknown) => isStorageMutation(message) ? enqueue(message) : Promise.resolve());
     vi.stubGlobal("chrome", {
       storage: {
         local: {
@@ -157,7 +160,9 @@ describe("settingsStorage", () => {
   });
 
   it("keeps writes successful when update notification has no listener", async () => {
-    sendMessage.mockRejectedValueOnce(new Error("No listener"));
+    const enqueue = createStorageMutationQueue();
+    sendMessage.mockImplementation((message: unknown) => isStorageMutation(message)
+      ? enqueue(message) : Promise.reject(new Error("No listener")));
 
     const updated = await saveSettings({ showToast: false });
 

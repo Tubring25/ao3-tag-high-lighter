@@ -10,6 +10,115 @@ describe("hoverMenu", () => {
     vi.useRealTimers();
   });
 
+  it("supports focus, nearby Tab entry, navigation and Escape without intercepting links", () => {
+    vi.useFakeTimers();
+    const work = createWork();
+    const tag = work.tags[0].element;
+    tag.setAttribute("href", "/tags/Slow%20Burn");
+    mountHoverMenu([work], createSettings(), createOptions());
+    tag.focus();
+    expect(getShadowButton()?.hidden).toBe(false);
+    expect(tag.getAttribute("aria-description")).toContain("Alt + Arrow Down");
+    const enter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    tag.dispatchEvent(enter);
+    expect(enter.defaultPrevented).toBe(false);
+    const click = new Event("click", { bubbles: true, cancelable: true });
+    tag.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(false);
+    tag.dispatchEvent(new FocusEvent("focus"));
+    tag.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }));
+    expect(getShadowRoot()?.activeElement).toBe(getShadowButton());
+    getShadowButton()!.click();
+    const items = getMenuOptions();
+    expect(getShadowRoot()?.activeElement).toBe(items[0]);
+    for (const [key, index] of [["ArrowUp", 2], ["ArrowDown", 0], ["End", 2], ["Home", 0]] as const) {
+      getShadowRoot()!.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, composed: true, cancelable: true }));
+      expect(getShadowRoot()?.activeElement).toBe(items[index]);
+    }
+    tag.dispatchEvent(new MouseEvent("mouseleave"));
+    vi.advanceTimersByTime(300);
+    expect(getShadowMenu()?.hidden).toBe(false);
+    items[0].dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, composed: true }));
+    expect(getShadowMenu()?.hidden).toBe(true);
+    expect(document.activeElement).toBe(tag);
+    expect(getShadowButton()?.hidden).toBe(true);
+    tag.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", altKey: true, bubbles: true, cancelable: true }));
+    expect(getShadowMenu()?.hidden).toBe(false);
+    unmountHoverMenu();
+    expect(document.activeElement).toBe(tag);
+    expect(tag.hasAttribute("aria-keyshortcuts")).toBe(false);
+  });
+
+  it.each(["Disk unavailable", "Duplicate rule: Slow Burn"])("shows accessible failure feedback and retries: %s", async (message) => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    const work = createWork();
+    const tag = work.tags[0].element;
+    tag.setAttribute("href", "/tags/Slow%20Burn");
+    const addRule = vi.fn().mockRejectedValueOnce(new Error(message)).mockResolvedValueOnce(createRule());
+    const options = createOptions({ addRule });
+    mountHoverMenu([work], createSettings(), options);
+    tag.focus();
+    getShadowButton()!.click();
+    const option = getMenuOptions()[0];
+    option.click();
+    option.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
+    expect(addRule).toHaveBeenCalledTimes(1);
+    expect(option.disabled).toBe(true);
+    await flushAsyncHandlers();
+    expect(getShadowMenu()?.hidden).toBe(false);
+    expect(getShadowMenu()?.querySelector("[role=alert]")?.textContent).toContain(message.startsWith("Duplicate") ? "already exists" : "try saving again");
+    expect(option.disabled).toBe(false);
+    expect(option.textContent).toContain("Try again");
+    expect(getShadowRoot()?.activeElement).toBe(option);
+    expect(options.onRuleCreated).not.toHaveBeenCalled();
+    option.click();
+    await flushAsyncHandlers();
+    expect(addRule).toHaveBeenCalledTimes(2);
+    expect(options.onRuleCreated).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(tag);
+    expect(getShadowMenu()?.hidden).toBe(true);
+    errorLog.mockRestore();
+  });
+
+  it("restores focus when dismissed during save and isolates a remounted menu", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    const work = createWork();
+    const tag = work.tags[0].element;
+    tag.setAttribute("href", "/tags/example");
+    let rejectSave: (error: Error) => void = () => {};
+    const addRule = vi.fn(() => new Promise<Rule>((_resolve, reject) => { rejectSave = reject; }));
+    mountHoverMenu([work], createSettings(), createOptions({ addRule }));
+    tag.focus();
+    getShadowButton()!.click();
+    getMenuOptions()[0].click();
+    expect(getShadowRoot()?.activeElement).toBe(getShadowMenu());
+    getShadowMenu()!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, composed: true }));
+    expect(document.activeElement).toBe(tag);
+    mountHoverMenu([work], createSettings(), createOptions());
+    tag.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", altKey: true, bubbles: true }));
+    const active = getShadowRoot()?.activeElement;
+    rejectSave(new Error("Old save failed"));
+    await flushAsyncHandlers();
+    expect(getShadowMenu()?.hidden).toBe(false);
+    expect(getShadowMenu()?.querySelector("[role=alert]")?.textContent).toBe("");
+    expect(getShadowRoot()?.activeElement).toBe(active);
+    errorLog.mockRestore();
+  });
+
+  it("does not steal outside focus on dismissal", () => {
+    const work = createWork();
+    work.tags[0].element.setAttribute("href", "/tags/example");
+    mountHoverMenu([work], createSettings(), createOptions());
+    work.tags[0].element.focus();
+    getShadowButton()!.click();
+    const outside = document.createElement("button");
+    document.body.append(outside);
+    outside.focus();
+    outside.click();
+    expect(getShadowMenu()?.hidden).toBe(true);
+    expect(document.activeElement).toBe(outside);
+  });
+
   it("does not mount when hover button is disabled", () => {
     const work = createWork();
 

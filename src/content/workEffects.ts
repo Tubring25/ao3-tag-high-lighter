@@ -158,7 +158,7 @@ function ensureCollapsePlaceholder(workElement: HTMLElement, reasons: readonly s
   button.className = "ao3th-collapse-placeholder";
   button.dataset.ao3thCollapsePlaceholder = "true";
   setCollapseReasons(button, reasons);
-  renderCollapsePlaceholder(button, false);
+  renderCollapsePlaceholder(button, workElement.dataset.ao3thExpanded === "true");
   button.addEventListener("click", (event) => {
     event.stopPropagation();
     const expanded = workElement.dataset.ao3thExpanded === "true";
