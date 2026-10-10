@@ -8,6 +8,7 @@ import { setLanguagePreference } from "../shared/i18n";
 import { debounce as defaultDebounce } from "../shared/utils";
 import { parseAo3Works as defaultParseAo3Works } from "./ao3Parser";
 import { calculateHitStats as defaultCalculateHitStats } from "./hitStats";
+import { syncPageSurface } from "./pageSurface";
 import {
   startPageObserver as defaultStartPageObserver,
   stopPageObserver as defaultStopPageObserver,
@@ -108,6 +109,7 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     if (!cachedSettings.extensionEnabled) return;
 
     cachedRules = await deps.listRules();
+    safeSyncPageSurface();
     refreshWorks();
     runMatchAndRender();
     syncHoverMenu();
@@ -137,6 +139,7 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     }
 
     cachedRules = await deps.listRules();
+    safeSyncPageSurface();
     refreshWorks();
     runMatchAndRender();
     syncHoverMenu();
@@ -242,6 +245,14 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
   function safeClearRenderedMatches(): void {
     try {
       deps.clearRenderedMatches(cachedWorks);
+    } catch (error) {
+      deps.logError(error);
+    }
+  }
+
+  function safeSyncPageSurface(): void {
+    try {
+      syncPageSurface();
     } catch (error) {
       deps.logError(error);
     }

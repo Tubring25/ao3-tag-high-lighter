@@ -27,7 +27,9 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    include: ["src/**/*.test.ts"]
+    include: ["src/**/*.test.ts"],
+    // Let tests read content.css via `?raw` to guard skin compatibility.
+    css: { include: [/content\.css/] }
   }
 });
 
