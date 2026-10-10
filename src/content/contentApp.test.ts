@@ -55,6 +55,19 @@ describe("startContentApp", () => {
     });
   });
 
+  it("marks dark AO3 site skins on enabled initialization", async () => {
+    document.body.style.backgroundColor = "#333333";
+    const { deps } = createDeps();
+
+    try {
+      await startContentApp(deps);
+      expect(document.documentElement.dataset.ao3thSurface).toBe("dark");
+    } finally {
+      document.body.removeAttribute("style");
+      delete document.documentElement.dataset.ao3thSurface;
+    }
+  });
+
   it("starts the page observer after enabled initialization", async () => {
     const { deps, startPageObserver } = createDeps();
 
