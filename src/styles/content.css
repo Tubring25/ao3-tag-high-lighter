@@ -9,6 +9,10 @@
   --ao3th-hidework-tag-text: #374151;
   --ao3th-hovered-tag-bg: #eeeeee;
   --ao3th-hovered-tag-text: #111111;
+  --ao3th-toast-border: rgba(55, 65, 81, 0.24);
+  --ao3th-toast-bg: #1f2937;
+  --ao3th-toast-text: #ffffff;
+  --ao3th-toast-shadow: rgba(17, 24, 39, 0.22);
 }
 
 /* Dark AO3 site skins (e.g. Reversi); set by pageSurface.ts. */
@@ -23,6 +27,10 @@
   --ao3th-hidework-tag-text: #f3f4f6;
   --ao3th-hovered-tag-bg: #52525b;
   --ao3th-hovered-tag-text: #fafafa;
+  --ao3th-toast-border: rgba(255, 255, 255, 0.18);
+  --ao3th-toast-bg: #111827;
+  --ao3th-toast-text: #ffffff;
+  --ao3th-toast-shadow: rgba(0, 0, 0, 0.5);
 }
 
 [data-ao3th-action="highlight"] {
@@ -82,7 +90,6 @@ li.work.blurb[data-ao3th-hidden="collapse"]:not([data-ao3th-expanded="true"]) {
   margin: 0 0 0.65rem !important;
   padding: 0.45rem 0.65rem !important;
   border: 0 !important;
-  color: #990000 !important;
   font: 600 13px/1.35 "Funnel Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", Verdana, Geneva, sans-serif !important;
 }
 
@@ -233,11 +240,11 @@ li.work.blurb[data-ao3th-hidden="collapse"][data-ao3th-expanded="true"]
 .ao3th-toast {
   max-width: min(320px, calc(100vw - 36px)) !important;
   padding: 9px 12px !important;
-  border: 1px solid rgba(55, 65, 81, 0.24) !important;
+  border: 1px solid var(--ao3th-toast-border) !important;
   border-radius: 8px !important;
-  background: #1f2937 !important;
-  color: #fff !important;
-  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.22) !important;
+  background: var(--ao3th-toast-bg) !important;
+  color: var(--ao3th-toast-text) !important;
+  box-shadow: 0 10px 24px var(--ao3th-toast-shadow) !important;
   font: 13px/1.35 "Funnel Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif !important;
   pointer-events: none !important;
 }
