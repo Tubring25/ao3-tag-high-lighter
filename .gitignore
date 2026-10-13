@@ -29,3 +29,6 @@ public/icons/ChatGPT Image*.png
 CLAUDE.md
 scratch/
 .alma-snapshots/
+# Playwright output
+test-results/
+playwright-report/
