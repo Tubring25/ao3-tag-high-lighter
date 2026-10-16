@@ -45,7 +45,7 @@ interface ChromeLike {
   };
 }
 
-const AO3_TAB_URL_PATTERN = "https://archiveofourown.org/*";
+const AO3_TAB_URL_PATTERN = "https://*.archiveofourown.org/*";
 
 export function initBackgroundApp(deps: BackgroundAppDeps = createRealDeps()): void {
   deps.logInfo("AO3 Tag Highlighter background worker loaded.");
