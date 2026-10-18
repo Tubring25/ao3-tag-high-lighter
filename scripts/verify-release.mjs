@@ -87,7 +87,7 @@ async function verifyManifest() {
     "manifest includes storage permission"
   );
   assert(
-    Array.isArray(manifest.host_permissions) && manifest.host_permissions.includes("https://archiveofourown.org/*"),
+    Array.isArray(manifest.host_permissions) && manifest.host_permissions.includes("https://*.archiveofourown.org/*"),
     "manifest includes AO3 host permission"
   );
   assert(manifest.action?.default_popup === "popup.html", "manifest action opens popup.html");

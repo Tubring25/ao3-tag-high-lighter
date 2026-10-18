@@ -208,7 +208,7 @@ export async function renderGuideApp(
     if (matchMode !== "wildcard") {
       const pattern = document.createElement("p");
       pattern.className = "guide-match-pattern";
-      pattern.innerHTML = `<span>${t("guidePattern")}</span><code>${guide.pattern}</code>`;
+      pattern.append(createTextElement("span", t("guidePattern")), createTextElement("code", guide.pattern));
       preview.appendChild(pattern);
     }
     preview.appendChild(summary);
@@ -235,7 +235,10 @@ export async function renderGuideApp(
 
     const pattern = document.createElement("p");
     pattern.className = "guide-match-pattern";
-    pattern.innerHTML = `<span>${wildcardCase.label}</span><code>${wildcardCase.pattern}</code>`;
+    pattern.append(
+      createTextElement("span", wildcardCase.label),
+      createTextElement("code", wildcardCase.pattern)
+    );
 
     caseBlock.append(pattern, createMatchSampleRow(t("guideMatches"), wildcardCase.examples, true));
     if (wildcardCase.misses.length > 0) {
@@ -283,7 +286,9 @@ export async function renderGuideApp(
     banner.textContent = getBannerText();
 
     const heading = document.createElement("h3");
-    heading.innerHTML = `<a href="${DEMO_WORK_URL}">Hotshot</a> <span>by SarcastCity</span>`;
+    const workLink = createTextElement("a", "Hotshot");
+    workLink.href = DEMO_WORK_URL;
+    heading.append(workLink, " ", createTextElement("span", "by SarcastCity"));
 
     const tags = document.createElement("p");
     tags.className = "guide-work-tags";
@@ -305,7 +310,13 @@ export async function renderGuideApp(
 
     const meta = document.createElement("dl");
     meta.className = "guide-meta";
-    meta.innerHTML = `<dt>${t("guideMetaWords")}</dt><dd>242,931</dd><dt>${t("guideMetaChapters")}</dt><dd>50/50</dd><dt>${t("guideMetaKudos")}</dt><dd>24,330</dd>`;
+    for (const [term, value] of [
+      [t("guideMetaWords"), "242,931"],
+      [t("guideMetaChapters"), "50/50"],
+      [t("guideMetaKudos"), "24,330"],
+    ] as const) {
+      meta.append(createTextElement("dt", term), createTextElement("dd", value));
+    }
 
     if (selectedAction !== "highlight") work.appendChild(banner);
     work.append(heading, tags, result, meta);
@@ -349,7 +360,7 @@ export async function renderGuideApp(
     const list = document.createElement("ol");
     for (const [stepTitle, text] of steps) {
       const item = document.createElement("li");
-      item.innerHTML = `<strong>${stepTitle}</strong><span>${text}</span>`;
+      item.append(createTextElement("strong", stepTitle), createTextElement("span", text));
       list.appendChild(item);
     }
     section.appendChild(list);
@@ -363,6 +374,15 @@ export async function renderGuideApp(
     heading.textContent = label;
     group.appendChild(heading);
     return group;
+  }
+
+  function createTextElement<K extends keyof HTMLElementTagNameMap>(
+    tagName: K,
+    text: string
+  ): HTMLElementTagNameMap[K] {
+    const element = document.createElement(tagName);
+    element.textContent = text;
+    return element;
   }
 
   function rerenderDemo(): void {
