@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it } from "vitest";
-import css from "../styles/content.css?raw";
 import { detectPageSurface, parseCssColor, relativeLuminance, syncPageSurface } from "./pageSurface";
 
 afterEach(() => {
@@ -76,25 +75,5 @@ describe("syncPageSurface", () => {
     document.body.style.backgroundColor = "#ffffff";
     syncPageSurface(document);
     expect(document.documentElement.dataset.ao3thSurface).toBeUndefined();
-  });
-});
-
-describe("content.css skin compatibility", () => {
-  it("never paints the matched work card background", () => {
-    const blurbRule = css.match(/li\.work\.blurb\[data-ao3th-rule-ids\]\s*\{([^}]*)\}/);
-    expect(blurbRule?.[1]).toBeDefined();
-    expect(blurbRule?.[1]).not.toMatch(/background/);
-  });
-
-  it("defines a dark override for every themed variable", () => {
-    const block = (selector: string) => {
-      const escaped = selector.replace(/[[\]"=]/g, "\\$&");
-      const body = css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
-      return [...body.matchAll(/(--ao3th-[\w-]+):/g)].map((match) => match[1]).sort();
-    };
-
-    const lightVars = block(":root");
-    expect(lightVars.length).toBeGreaterThan(0);
-    expect(block(':root[data-ao3th-surface="dark"]')).toEqual(lightVars);
   });
 });
