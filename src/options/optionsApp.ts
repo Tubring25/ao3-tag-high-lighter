@@ -143,7 +143,11 @@ export async function renderOptionsApp(
 
     const brand = document.createElement("div");
     brand.className = "options-brand";
-    brand.innerHTML = `<strong>AO3 Tag<br>Highlighter</strong><span>${t("optionsRuleSettings")}</span>`;
+    const brandName = document.createElement("strong");
+    brandName.append("AO3 Tag", document.createElement("br"), "Highlighter");
+    const brandSection = document.createElement("span");
+    brandSection.textContent = t("optionsRuleSettings");
+    brand.append(brandName, brandSection);
 
     const nav = document.createElement("nav");
     nav.className = "options-nav";
@@ -157,7 +161,11 @@ export async function renderOptionsApp(
       item.type = "button";
       item.className = status === filterStatus ? "options-nav-item is-active" : "options-nav-item";
       item.dataset.sidebarStatusFilter = status;
-      item.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
+      const itemLabel = document.createElement("span");
+      itemLabel.textContent = label;
+      const itemValue = document.createElement("strong");
+      itemValue.textContent = value;
+      item.append(itemLabel, itemValue);
       item.addEventListener("click", () => {
         rememberRuleListScroll();
         filterStatus = status;
