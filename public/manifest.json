@@ -11,14 +11,14 @@
     "128": "icons/icon-128.png"
   },
   "permissions": ["storage"],
-  "host_permissions": ["https://archiveofourown.org/*"],
+  "host_permissions": ["https://*.archiveofourown.org/*"],
   "background": {
     "service_worker": "background/index.js",
     "type": "module"
   },
   "content_scripts": [
     {
-      "matches": ["https://archiveofourown.org/*"],
+      "matches": ["https://*.archiveofourown.org/*"],
       "css": ["assets/content.css"],
       "js": ["content/index.js"]
     }

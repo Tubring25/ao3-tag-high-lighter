@@ -474,7 +474,7 @@ function getPageLabel(tab: CurrentTab | null): string {
 
   try {
     const url = new URL(tab.url);
-    if (url.hostname === "archiveofourown.org") {
+    if (url.hostname === "archiveofourown.org" || url.hostname.endsWith(".archiveofourown.org")) {
       return /^\/works\/\d+(?:\/|$)/.test(url.pathname) ? t("popupAo3WorkPage") : t("popupAo3Page");
     }
     return url.hostname;
