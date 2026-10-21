@@ -3,15 +3,26 @@
   "version": "0.1.2",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "vite build",
+    "build:firefox": "vite build --mode firefox",
     "dev": "vite build --watch",
+    "dev:firefox": "vite build --mode firefox --watch",
     "lint": "tsc --noEmit && tsc --noEmit -p e2e",
+    "lint:firefox": "web-ext lint --source-dir dist-firefox",
     "test": "vitest run",
     "test:e2e": "npm run build && playwright test",
     "e2e:capture": "node e2e/scripts/capture-fixtures.mjs",
     "verify": "npm run build && npm run lint && npm run test",
-    "verify:release": "npm run verify && node scripts/verify-release.mjs"
+    "verify:release": "npm run verify && node scripts/verify-release.mjs",
+    "verify:firefox": "npm run build:firefox && npm run lint && npm run test && node scripts/verify-release.mjs --target=firefox && npm run lint:firefox",
+    "start:firefox": "web-ext run --source-dir dist-firefox",
+    "start:android": "web-ext run --target=firefox-android --source-dir dist-firefox",
+    "package:firefox": "npm run verify:firefox && web-ext build --source-dir dist-firefox --artifacts-dir web-ext-artifacts --overwrite-dest",
+    "package:firefox-source": "node -e \"require('node:fs').mkdirSync('web-ext-artifacts',{recursive:true})\" && git archive --format=zip --output=web-ext-artifacts/source.zip HEAD"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
@@ -21,6 +32,7 @@
     "playwright-core": "1.57.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.10",
-    "vitest": "^2.1.4"
+    "vitest": "^2.1.4",
+    "web-ext": "^10.8.0"
   }
 }
