@@ -2,6 +2,7 @@ import { requestMutation } from "./mutationClient";
 import type { Rule } from "../core/types";
 import { normalizeTagText } from "../core/normalize";
 import { STORAGE_KEY_RULES } from "../shared/constants";
+import { getExtensionApi } from "../shared/extensionApi";
 import type { RuntimeMessage } from "../shared/message";
 import { generateId } from "../shared/utils";
 
@@ -31,7 +32,7 @@ interface ChromeLike {
 
 export async function listRules(): Promise<Rule[]> {
   try {
-    const result = await getChrome().storage.local.get(STORAGE_KEY_RULES);
+    const result = await getExtensionApi<ChromeLike>().storage.local.get(STORAGE_KEY_RULES);
     const rules = result[STORAGE_KEY_RULES];
     return Array.isArray(rules) ? rules.filter(isValidStoredRule) : [];
   } catch {
@@ -183,23 +184,15 @@ function getRuleUniquenessKey(
 }
 
 async function saveRules(rules: readonly Rule[]): Promise<void> {
-  await getChrome().storage.local.set({ [STORAGE_KEY_RULES]: [...rules] });
+  await getExtensionApi<ChromeLike>().storage.local.set({ [STORAGE_KEY_RULES]: [...rules] });
 }
 
 async function notifyUpdate(message: RuntimeMessage): Promise<void> {
   try {
-    await getChrome().runtime?.sendMessage(message);
+    await getExtensionApi<ChromeLike>().runtime?.sendMessage(message);
   } catch {
     // Options/popup can run without a listener during early implementation.
   }
-}
-
-function getChrome(): ChromeLike {
-  const chromeApi = (globalThis as typeof globalThis & { chrome?: ChromeLike }).chrome;
-  if (!chromeApi) {
-    throw new Error("Chrome extension API is unavailable");
-  }
-  return chromeApi;
 }
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
@@ -207,7 +200,7 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
 }
 
 async function readRulesStrict(): Promise<Rule[]> {
-  const result = await getChrome().storage.local.get(STORAGE_KEY_RULES);
+  const result = await getExtensionApi<ChromeLike>().storage.local.get(STORAGE_KEY_RULES);
   const rules = result[STORAGE_KEY_RULES];
   if (rules === undefined) return [];
   if (!Array.isArray(rules) || !rules.every(isValidStoredRule)) {

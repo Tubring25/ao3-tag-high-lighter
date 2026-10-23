@@ -4,6 +4,7 @@ import { listRules as defaultListRules } from "../storage/ruleStorage";
 import { getSettings as defaultGetSettings } from "../storage/settingsStorage";
 import type { HitStats, RuntimeMessage } from "../shared/message";
 import { LOG_PREFIX } from "../shared/constants";
+import { getExtensionApi } from "../shared/extensionApi";
 import { setLanguagePreference } from "../shared/i18n";
 import { debounce as defaultDebounce } from "../shared/utils";
 import { parseAo3Works as defaultParseAo3Works } from "./ao3Parser";
@@ -291,9 +292,9 @@ function createRealDeps(): ContentAppDeps {
     stopPageObserver: defaultStopPageObserver,
     debounce: defaultDebounce,
     addMessageListener: (callback) => {
-      const onMessage = getChrome().runtime?.onMessage;
+      const onMessage = getExtensionApi<ChromeLike>().runtime?.onMessage;
       if (!onMessage) {
-        throw new Error("Chrome runtime message API is unavailable");
+        throw new Error("Extension runtime message API is unavailable");
       }
       onMessage.addListener((message, _sender, sendResponse) => {
         callback(message, sendResponse);
@@ -321,14 +322,6 @@ function isRuntimeMessage(message: unknown): message is RuntimeMessage {
       message.type === "SETTINGS_UPDATED" ||
       message.type === "GET_HIT_STATS")
   );
-}
-
-function getChrome(): ChromeLike {
-  const chromeApi = (globalThis as typeof globalThis & { chrome?: ChromeLike }).chrome;
-  if (!chromeApi) {
-    throw new Error("Chrome extension API is unavailable");
-  }
-  return chromeApi;
 }
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {

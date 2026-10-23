@@ -1,4 +1,5 @@
 import type { Rule, Settings } from "../core/types";
+import { findExtensionApi } from "../shared/extensionApi";
 
 export interface StorageOperations {
   addRule: { args: [Omit<Rule, "id" | "createdAt" | "updatedAt">]; result: Rule };
@@ -26,9 +27,9 @@ export async function requestMutation<Operation extends keyof StorageOperations>
   operation: Operation,
   ...args: StorageOperations[Operation]["args"]
 ): Promise<StorageOperations[Operation]["result"]> {
-  const chromeApi = (globalThis as typeof globalThis & {
-    chrome?: { runtime?: { sendMessage(message: unknown): Promise<StorageMutationResponse> } };
-  }).chrome;
+  const chromeApi = findExtensionApi<{
+    runtime?: { sendMessage(message: unknown): Promise<StorageMutationResponse> };
+  }>();
   if (!chromeApi?.runtime) throw new Error("Chrome runtime message API is unavailable");
   const response = await chromeApi.runtime.sendMessage({ type: "STORAGE_MUTATION", operation, args });
   if (!response || !response.ok) {

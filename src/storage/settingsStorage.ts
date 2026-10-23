@@ -2,6 +2,7 @@ import { requestMutation } from "./mutationClient";
 import type { Settings } from "../core/types";
 import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
 import { STORAGE_KEY_SETTINGS } from "../shared/constants";
+import { getExtensionApi } from "../shared/extensionApi";
 import type { RuntimeMessage } from "../shared/message";
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -41,7 +42,7 @@ async function saveSettingsLocally(patch: Partial<Settings>): Promise<Settings> 
   const updated = mergeSettings({ ...current, ...patch });
   validateSettingsInput(updated);
 
-  await getChrome().storage.local.set({ [STORAGE_KEY_SETTINGS]: updated });
+  await getExtensionApi<ChromeLike>().storage.local.set({ [STORAGE_KEY_SETTINGS]: updated });
   await notifyUpdate({ type: "SETTINGS_UPDATED" });
   return updated;
 }
@@ -49,7 +50,7 @@ async function saveSettingsLocally(patch: Partial<Settings>): Promise<Settings> 
 async function resetSettingsLocally(): Promise<Settings> {
   await readSettingsStrict();
   const defaults = cloneDefaultSettings();
-  await getChrome().storage.local.set({ [STORAGE_KEY_SETTINGS]: defaults });
+  await getExtensionApi<ChromeLike>().storage.local.set({ [STORAGE_KEY_SETTINGS]: defaults });
   await notifyUpdate({ type: "SETTINGS_UPDATED" });
   return defaults;
 }
@@ -149,18 +150,10 @@ function validateBooleanField(input: Partial<Settings>, key: keyof Settings): vo
 
 async function notifyUpdate(message: RuntimeMessage): Promise<void> {
   try {
-    await getChrome().runtime?.sendMessage(message);
+    await getExtensionApi<ChromeLike>().runtime?.sendMessage(message);
   } catch {
     // Options/popup can run without a listener during early implementation.
   }
-}
-
-function getChrome(): ChromeLike {
-  const chromeApi = (globalThis as typeof globalThis & { chrome?: ChromeLike }).chrome;
-  if (!chromeApi) {
-    throw new Error("Chrome extension API is unavailable");
-  }
-  return chromeApi;
 }
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
@@ -168,7 +161,7 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
 }
 
 async function readSettingsStrict(): Promise<Settings> {
-  const result = await getChrome().storage.local.get(STORAGE_KEY_SETTINGS);
+  const result = await getExtensionApi<ChromeLike>().storage.local.get(STORAGE_KEY_SETTINGS);
   const stored = result[STORAGE_KEY_SETTINGS];
   if (stored !== undefined && !isObjectRecord(stored)) throw new Error("Invalid stored settings");
   if (stored !== undefined) validateSettingsInput(stored as Partial<Settings>);

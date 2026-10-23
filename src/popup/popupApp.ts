@@ -1,6 +1,7 @@
 import type { Settings } from "../core/types";
 import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
 import { LOG_PREFIX } from "../shared/constants";
+import { getExtensionApi } from "../shared/extensionApi";
 import { applyDocumentLanguage, getLocalizedActionLabel, setLanguagePreference, t } from "../shared/i18n";
 import type { HitStats, RuntimeMessage } from "../shared/message";
 import {
@@ -500,20 +501,20 @@ function createRealDeps(): PopupAppDeps {
     getSettings: defaultGetSettings,
     saveSettings: defaultSaveSettings,
     getCurrentTab: async () => {
-      const tabsApi = getChrome().tabs;
+      const tabsApi = getExtensionApi<ChromeLike>().tabs;
       if (!tabsApi) return null;
       const [tab] = await tabsApi.query({ active: true, currentWindow: true });
       return tab ?? null;
     },
     sendMessageToTab: async (tabId, message) => {
-      const tabsApi = getChrome().tabs;
+      const tabsApi = getExtensionApi<ChromeLike>().tabs;
       if (!tabsApi) {
-        throw new Error("Chrome tabs API is unavailable");
+        throw new Error("Extension tabs API is unavailable");
       }
       return tabsApi.sendMessage(tabId, message);
     },
     openOptionsPage: () => {
-      getChrome().runtime?.openOptionsPage();
+      getExtensionApi<ChromeLike>().runtime?.openOptionsPage();
     },
     logError: (error) => {
       console.error(`${LOG_PREFIX} Popup error:`, error);
@@ -529,14 +530,6 @@ function isHitStats(value: unknown): value is HitStats {
     typeof value.hideWork === "number" &&
     typeof value.totalRules === "number"
   );
-}
-
-function getChrome(): ChromeLike {
-  const chromeApi = (globalThis as typeof globalThis & { chrome?: ChromeLike }).chrome;
-  if (!chromeApi) {
-    throw new Error("Chrome extension API is unavailable");
-  }
-  return chromeApi;
 }
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {

@@ -6,6 +6,7 @@ import type {
   RuleActionStyle,
   RuleActionStyles,
 } from "../core/types";
+import { findExtensionApi } from "./extensionApi";
 
 const EN_MESSAGES = {
   extensionName: "AO3 Tag Highlighter",
@@ -409,9 +410,8 @@ function getChromeMessage(
   key: MessageKey,
   substitutions: ReadonlyArray<string | number>
 ): string {
-  const chromeApi = (globalThis as typeof globalThis & { chrome?: ChromeI18nLike }).chrome;
   const values = substitutions.map(String);
-  return chromeApi?.i18n?.getMessage(key, values.length <= 1 ? values[0] : values) ?? "";
+  return findExtensionApi<ChromeI18nLike>()?.i18n?.getMessage(key, values.length <= 1 ? values[0] : values) ?? "";
 }
 
 function getActiveLocale(): string {

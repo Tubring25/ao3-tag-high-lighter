@@ -2,6 +2,7 @@ import type { RuntimeMessage } from "../shared/message";
 import type { StorageMutationResponse } from "../storage/mutationClient";
 import { createStorageMutationQueue, isStorageMutation } from "./storageMutations";
 import { LOG_PREFIX } from "../shared/constants";
+import { getExtensionApi } from "../shared/extensionApi";
 
 export interface BackgroundTab {
   id?: number;
@@ -112,23 +113,23 @@ async function broadcastToAo3Tabs(deps: BackgroundAppDeps, message: RuntimeMessa
 function createRealDeps(): BackgroundAppDeps {
   return {
     queryAo3Tabs: async () => {
-      const tabsApi = getChrome().tabs;
+      const tabsApi = getExtensionApi<ChromeLike>().tabs;
       if (!tabsApi) {
-        throw new Error("Chrome tabs API is unavailable");
+        throw new Error("Extension tabs API is unavailable");
       }
       return tabsApi.query({ url: AO3_TAB_URL_PATTERN });
     },
     sendMessageToTab: async (tabId, message) => {
-      const tabsApi = getChrome().tabs;
+      const tabsApi = getExtensionApi<ChromeLike>().tabs;
       if (!tabsApi) {
-        throw new Error("Chrome tabs API is unavailable");
+        throw new Error("Extension tabs API is unavailable");
       }
       return tabsApi.sendMessage(tabId, message);
     },
     addMessageListener: (callback) => {
-      const onMessage = getChrome().runtime?.onMessage;
+      const onMessage = getExtensionApi<ChromeLike>().runtime?.onMessage;
       if (!onMessage) {
-        throw new Error("Chrome runtime message API is unavailable");
+        throw new Error("Extension runtime message API is unavailable");
       }
 
       onMessage.addListener((message, _sender, sendResponse) => {
@@ -136,7 +137,7 @@ function createRealDeps(): BackgroundAppDeps {
       });
     },
     addInstalledListener: (callback) => {
-      getChrome().runtime?.onInstalled?.addListener(callback);
+      getExtensionApi<ChromeLike>().runtime?.onInstalled?.addListener(callback);
     },
     logInfo: (message) => {
       console.info(message);
@@ -145,14 +146,6 @@ function createRealDeps(): BackgroundAppDeps {
       console.error(`${LOG_PREFIX} Background error:`, error);
     },
   };
-}
-
-function getChrome(): ChromeLike {
-  const chromeApi = (globalThis as typeof globalThis & { chrome?: ChromeLike }).chrome;
-  if (!chromeApi) {
-    throw new Error("Chrome extension API is unavailable");
-  }
-  return chromeApi;
 }
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
