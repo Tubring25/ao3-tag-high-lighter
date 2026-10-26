@@ -170,9 +170,18 @@ body {
   background: #f5e9e7;
 }
 
+.popup-notice[data-notice="access"] {
+  border-color: #990000;
+}
+
 .popup-notice[data-notice="paused"] .popup-notice-title,
-.popup-notice[data-notice="error"] .popup-notice-title {
+.popup-notice[data-notice="error"] .popup-notice-title,
+.popup-notice[data-notice="access"] .popup-notice-title {
   color: #990000;
+}
+
+.popup-notice-action {
+  margin-top: 12px;
 }
 
 .popup-notice[data-notice="empty"] {

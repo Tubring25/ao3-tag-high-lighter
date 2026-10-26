@@ -192,14 +192,82 @@ describe("renderPopupApp", () => {
     expect(logError).toHaveBeenCalledTimes(1);
   });
 
-  it("opens the options page from the manage button", async () => {
+  it("opens the options page from the manage button, then closes the popup", async () => {
     const container = document.createElement("div");
-    const openOptionsPage = vi.fn();
+    const calls: string[] = [];
+    const openOptionsPage = vi.fn(() => calls.push("openOptionsPage"));
+    const closePopup = vi.fn(() => calls.push("closePopup"));
 
-    await renderPopupApp(container, createDeps({ openOptionsPage }));
+    await renderPopupApp(container, createDeps({ openOptionsPage, closePopup }));
     container.querySelector<HTMLButtonElement>("[data-popup-options]")?.click();
 
     expect(openOptionsPage).toHaveBeenCalledTimes(1);
+    expect(calls).toEqual(["openOptionsPage", "closePopup"]);
+  });
+
+  it("does not render the access notice when AO3 access is granted", async () => {
+    const container = document.createElement("div");
+
+    await renderPopupApp(container, createDeps());
+
+    expect(container.querySelector("[data-popup-access-notice]")).toBeNull();
+    expect(container.querySelector("[data-popup-grant-access]")).toBeNull();
+  });
+
+  it("renders the access notice before page status when AO3 access is missing", async () => {
+    const container = document.createElement("div");
+
+    await renderPopupApp(container, createDeps({ hasAo3Access: vi.fn(async () => false) }));
+
+    const notice = container.querySelector("[data-popup-access-notice]");
+    expect(notice?.textContent).toContain("AO3 access is off.");
+    expect(notice?.textContent).toContain("Allow access to archiveofourown.org so tags can be marked.");
+    expect(notice?.querySelector("[data-popup-grant-access]")?.textContent).toBe("Allow access");
+    expect(notice?.nextElementSibling?.hasAttribute("data-popup-notice")).toBe(true);
+  });
+
+  it("requests AO3 access synchronously and shows a reload hint when granted", async () => {
+    const container = document.createElement("div");
+    const requestAo3Access = vi.fn(async () => true);
+
+    await renderPopupApp(container, createDeps({ hasAo3Access: vi.fn(async () => false), requestAo3Access }));
+    container.querySelector<HTMLButtonElement>("[data-popup-grant-access]")?.click();
+
+    expect(requestAo3Access).toHaveBeenCalledTimes(1);
+    await flushAsyncHandlers();
+
+    const notice = container.querySelector("[data-popup-access-notice]");
+    expect(notice?.textContent).toBe("Access granted. Reload the AO3 page.");
+    expect(container.querySelector("[data-popup-grant-access]")).toBeNull();
+  });
+
+  it.each([
+    ["denied", vi.fn(async () => false)],
+    ["rejected", vi.fn(async () => { throw new Error("request failed"); })],
+  ])("keeps the grant button when the access request is %s", async (_label, requestAo3Access) => {
+    const container = document.createElement("div");
+
+    await renderPopupApp(container, createDeps({ hasAo3Access: vi.fn(async () => false), requestAo3Access }));
+    container.querySelector<HTMLButtonElement>("[data-popup-grant-access]")?.click();
+    await flushAsyncHandlers();
+
+    const button = container.querySelector<HTMLButtonElement>("[data-popup-grant-access]");
+    expect(button).not.toBeNull();
+    expect(button?.disabled).toBe(false);
+    expect(container.textContent).not.toContain("Access granted.");
+  });
+
+  it("treats a failed access check as granted", async () => {
+    const container = document.createElement("div");
+    const logError = vi.fn();
+
+    await renderPopupApp(
+      container,
+      createDeps({ logError, hasAo3Access: vi.fn(async () => { throw new Error("permissions failed"); }) })
+    );
+
+    expect(container.querySelector("[data-popup-access-notice]")).toBeNull();
+    expect(logError).toHaveBeenCalledTimes(1);
   });
 
   it("toggles the hover button setting from a labeled switch", async () => {
@@ -275,6 +343,9 @@ function createDeps(overrides: Partial<PopupAppDeps> = {}): PopupAppDeps {
     getCurrentTab: vi.fn(async () => ({ id: 12, url: "https://archiveofourown.org/works/123" })),
     sendMessageToTab: vi.fn(async () => createHitStats()),
     openOptionsPage: vi.fn(),
+    closePopup: vi.fn(),
+    hasAo3Access: vi.fn(async () => true),
+    requestAo3Access: vi.fn(async () => true),
     logError: vi.fn(),
     ...overrides,
   };

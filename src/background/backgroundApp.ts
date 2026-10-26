@@ -1,7 +1,7 @@
 import type { RuntimeMessage } from "../shared/message";
 import type { StorageMutationResponse } from "../storage/mutationClient";
 import { createStorageMutationQueue, isStorageMutation } from "./storageMutations";
-import { LOG_PREFIX } from "../shared/constants";
+import { AO3_ORIGIN_PATTERN, LOG_PREFIX } from "../shared/constants";
 import { getExtensionApi } from "../shared/extensionApi";
 
 export interface BackgroundTab {
@@ -46,7 +46,7 @@ interface ChromeLike {
   };
 }
 
-const AO3_TAB_URL_PATTERN = "https://*.archiveofourown.org/*";
+const AO3_TAB_URL_PATTERN = AO3_ORIGIN_PATTERN;
 
 export function initBackgroundApp(deps: BackgroundAppDeps = createRealDeps()): void {
   deps.logInfo("AO3 Tag Highlighter background worker loaded.");

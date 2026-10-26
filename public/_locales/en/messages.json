@@ -95,6 +95,18 @@
   "popupOpenAo3PageBody": {
     "message": "Matches will appear here."
   },
+  "popupAccessRequiredTitle": {
+    "message": "AO3 access is off."
+  },
+  "popupAccessRequiredBody": {
+    "message": "Allow access to archiveofourown.org so tags can be marked."
+  },
+  "popupGrantAccess": {
+    "message": "Allow access"
+  },
+  "popupAccessGrantedReload": {
+    "message": "Access granted. Reload the AO3 page."
+  },
   "popupPausedTitle": {
     "message": "Extension paused."
   },

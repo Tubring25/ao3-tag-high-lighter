@@ -95,6 +95,18 @@
   "popupOpenAo3PageBody": {
     "message": "当前页命中的规则会显示在这里。"
   },
+  "popupAccessRequiredTitle": {
+    "message": "未授权访问 AO3。"
+  },
+  "popupAccessRequiredBody": {
+    "message": "允许访问 archiveofourown.org 后才能标记标签。"
+  },
+  "popupGrantAccess": {
+    "message": "授予权限"
+  },
+  "popupAccessGrantedReload": {
+    "message": "已授权，请刷新 AO3 页面。"
+  },
   "popupPausedTitle": {
     "message": "已暂停。"
   },

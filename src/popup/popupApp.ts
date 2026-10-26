@@ -1,6 +1,6 @@
 import type { Settings } from "../core/types";
 import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
-import { LOG_PREFIX } from "../shared/constants";
+import { AO3_ORIGIN_PATTERN, LOG_PREFIX } from "../shared/constants";
 import { getExtensionApi } from "../shared/extensionApi";
 import { applyDocumentLanguage, getLocalizedActionLabel, setLanguagePreference, t } from "../shared/i18n";
 import type { HitStats, RuntimeMessage } from "../shared/message";
@@ -15,6 +15,9 @@ export interface PopupAppDeps {
   getCurrentTab(): Promise<CurrentTab | null>;
   sendMessageToTab(tabId: number, message: RuntimeMessage): Promise<unknown>;
   openOptionsPage(): void;
+  closePopup(): void;
+  hasAo3Access(): Promise<boolean>;
+  requestAo3Access(): Promise<boolean>;
   logError(error: unknown): void;
 }
 
@@ -30,6 +33,10 @@ interface ChromeLike {
   };
   runtime?: {
     openOptionsPage(): void;
+  };
+  permissions?: {
+    contains(permissions: { origins: string[] }): Promise<boolean>;
+    request(permissions: { origins: string[] }): Promise<boolean>;
   };
 }
 
@@ -72,9 +79,13 @@ export async function renderPopupApp(
   }
 
   const pageLabel = getPageLabel(currentTab);
-  const stats = await getCurrentPageStats(deps, currentTab);
+  const [stats, hasAo3Access] = await Promise.all([
+    getCurrentPageStats(deps, currentTab),
+    hasAo3AccessSafely(deps),
+  ]);
 
   renderHeader(shell, settings, stats, deps, pageLabel);
+  if (!hasAo3Access) renderAccessNotice(shell, deps);
   renderPageStatus(shell, settings, stats);
   renderStats(shell, stats, !settings.extensionEnabled, settings);
   renderActions(shell, settings, deps);
@@ -100,6 +111,15 @@ async function getCurrentPageStats(
     return isHitStats(response) ? response : null;
   } catch {
     return null;
+  }
+}
+
+async function hasAo3AccessSafely(deps: PopupAppDeps): Promise<boolean> {
+  try {
+    return await deps.hasAo3Access();
+  } catch (error) {
+    deps.logError(error);
+    return true;
   }
 }
 
@@ -204,6 +224,50 @@ function renderPageStatus(
   container.appendChild(notice);
 }
 
+function renderAccessNotice(container: HTMLElement, deps: PopupAppDeps): void {
+  const notice = document.createElement("section");
+  notice.className = "popup-notice";
+  notice.dataset.popupAccessNotice = "true";
+  notice.dataset.notice = "access";
+
+  const title = document.createElement("h2");
+  title.className = "popup-notice-title";
+  title.textContent = t("popupAccessRequiredTitle");
+
+  const body = document.createElement("p");
+  body.className = "popup-notice-body";
+  body.textContent = t("popupAccessRequiredBody");
+
+  const grantButton = document.createElement("button");
+  grantButton.type = "button";
+  grantButton.className = "popup-button popup-button-primary popup-notice-action";
+  grantButton.dataset.popupGrantAccess = "true";
+  grantButton.textContent = t("popupGrantAccess");
+  grantButton.addEventListener("click", () => {
+    // Firefox only allows permission requests inside the user gesture, so call before any await.
+    const request = deps.requestAo3Access();
+    grantButton.disabled = true;
+    void request
+      .catch((error: unknown) => {
+        deps.logError(error);
+        return false;
+      })
+      .then((granted) => {
+        if (!granted) {
+          grantButton.disabled = false;
+          return;
+        }
+        notice.dataset.notice = "granted";
+        title.textContent = t("popupAccessGrantedReload");
+        body.remove();
+        grantButton.remove();
+      });
+  });
+
+  notice.append(title, body, grantButton);
+  container.appendChild(notice);
+}
+
 function renderErrorNotice(container: HTMLElement): void {
   const notice = document.createElement("section");
   notice.className = "popup-notice";
@@ -290,6 +354,7 @@ function renderActions(container: HTMLElement, settings: Settings, deps: PopupAp
   manageButton.textContent = t("popupManageRules");
   manageButton.addEventListener("click", () => {
     deps.openOptionsPage();
+    deps.closePopup();
   });
 
   const hoverSetting = createHoverButtonSetting(settings, deps);
@@ -515,6 +580,19 @@ function createRealDeps(): PopupAppDeps {
     },
     openOptionsPage: () => {
       getExtensionApi<ChromeLike>().runtime?.openOptionsPage();
+    },
+    closePopup: () => {
+      window.close();
+    },
+    hasAo3Access: async () => {
+      const permissionsApi = getExtensionApi<ChromeLike>().permissions;
+      if (!permissionsApi) return true;
+      return permissionsApi.contains({ origins: [AO3_ORIGIN_PATTERN] });
+    },
+    requestAo3Access: async () => {
+      const permissionsApi = getExtensionApi<ChromeLike>().permissions;
+      if (!permissionsApi) return false;
+      return permissionsApi.request({ origins: [AO3_ORIGIN_PATTERN] });
     },
     logError: (error) => {
       console.error(`${LOG_PREFIX} Popup error:`, error);
