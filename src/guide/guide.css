@@ -59,6 +59,11 @@ button {
   letter-spacing: -0.035em;
 }
 
+:lang(zh) .guide-hero h1 {
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
 .guide-lede {
   max-width: 560px;
   margin: 14px 0 0;
@@ -91,7 +96,7 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 390px;
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
   margin-top: 26px;
 }
 
@@ -103,20 +108,14 @@ button {
   background: #ffffff;
 }
 
-.guide-preview,
-.guide-builder {
-  align-self: start;
-}
-
 .guide-preview {
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 16px;
   box-sizing: border-box;
-  height: 380px;
+  min-height: 380px;
   padding: clamp(18px, 3vw, 28px);
   background: #f8fafb;
-  overflow: auto;
 }
 
 .guide-builder {
@@ -124,9 +123,8 @@ button {
   align-content: start;
   gap: 12px;
   box-sizing: border-box;
-  height: 380px;
+  min-height: 380px;
   padding: 18px;
-  overflow: auto;
 }
 
 .guide-builder h2 {
@@ -356,6 +354,7 @@ button {
 
 .guide-segmented {
   display: flex;
+  box-sizing: border-box;
   width: fit-content;
   max-width: 100%;
   border: 1px solid #d5d8dc;
@@ -564,6 +563,11 @@ button {
 
   .guide-primary-link {
     width: fit-content;
+  }
+
+  .guide-preview,
+  .guide-builder {
+    min-height: 0;
   }
 
   .guide-next ol {
