@@ -100,6 +100,21 @@ async function verifyManifest() {
       manifest.host_permissions.includes("https://*.archiveofourown.org/*"),
     "manifest includes AO3 host permission"
   );
+  assert(
+    Array.isArray(manifest.permissions) && manifest.permissions.includes("scripting"),
+    "manifest includes scripting permission for custom sites"
+  );
+  assert(
+    Array.isArray(manifest.optional_host_permissions) &&
+      manifest.optional_host_permissions.length === 1 &&
+      manifest.optional_host_permissions[0] === "https://*/*",
+    "manifest custom sites are optional https host permissions"
+  );
+  assert(
+    Array.isArray(manifest.content_scripts) &&
+      manifest.content_scripts.some((script) => script.matches?.includes("https://*.archiveofourown.org/*")),
+    "manifest has the AO3 content script reused for custom sites"
+  );
   assert(manifest.action?.default_popup === "popup.html", "manifest action opens popup.html");
   assert(typeof manifest.action?.default_title === "string", "manifest action has default title");
   for (const size of iconSizes) {

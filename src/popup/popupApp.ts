@@ -1,6 +1,7 @@
 import type { Settings } from "../core/types";
 import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
 import { AO3_ORIGIN_PATTERN, LOG_PREFIX } from "../shared/constants";
+import { isAo3Host } from "../shared/customHosts";
 import { getExtensionApi } from "../shared/extensionApi";
 import { applyDocumentLanguage, getLocalizedActionLabel, setLanguagePreference, t } from "../shared/i18n";
 import type { HitStats, RuntimeMessage } from "../shared/message";
@@ -85,7 +86,9 @@ export async function renderPopupApp(
   ]);
 
   renderHeader(shell, settings, stats, deps, pageLabel);
-  if (!hasAo3Access) renderAccessNotice(shell, deps);
+  // A responding content script proves this page is covered, even when the wildcard check says no
+  // (Chromium answers false if the user granted only archiveofourown.org itself).
+  if (!hasAo3Access && !stats) renderAccessNotice(shell, deps);
   renderPageStatus(shell, settings, stats);
   renderStats(shell, stats, !settings.extensionEnabled, settings);
   renderActions(shell, settings, deps);
@@ -540,7 +543,7 @@ function getPageLabel(tab: CurrentTab | null): string {
 
   try {
     const url = new URL(tab.url);
-    if (url.hostname === "archiveofourown.org" || url.hostname.endsWith(".archiveofourown.org")) {
+    if (isAo3Host(url.hostname)) {
       return /^\/works\/\d+(?:\/|$)/.test(url.pathname) ? t("popupAo3WorkPage") : t("popupAo3Page");
     }
     return url.hostname;

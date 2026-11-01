@@ -314,6 +314,90 @@
   "optionsOperationFailed": {
     "message": "Operation failed"
   },
+  "optionsSites": {
+    "message": "Run on sites"
+  },
+  "optionsSitesHint": {
+    "message": "Add an AO3 mirror and grant access to enable tag marking there."
+  },
+  "optionsSitesTrustNote": {
+    "message": "Only add sites you trust. A mirror's pages may differ from AO3, so some tags may not be marked."
+  },
+  "optionsSiteDefault": {
+    "message": "Default"
+  },
+  "optionsSiteField": {
+    "message": "Site address"
+  },
+  "optionsSiteEnable": {
+    "message": "Enable"
+  },
+  "optionsSiteRemove": {
+    "message": "Remove"
+  },
+  "optionsSiteEnabled": {
+    "message": "$1 is on. Reload pages already open on it."
+  },
+  "optionsSiteRemoved": {
+    "message": "$1 removed. Reload pages already open on it."
+  },
+  "optionsSiteDenied": {
+    "message": "Access wasn't granted, so the site wasn't added."
+  },
+  "optionsSiteFailed": {
+    "message": "Couldn't change site access. Try again."
+  },
+  "optionsSiteEmpty": {
+    "message": "Enter a site address."
+  },
+  "optionsSiteInvalid": {
+    "message": "Enter a valid site address."
+  },
+  "optionsSiteIsAo3": {
+    "message": "Official AO3 is always on."
+  },
+  "optionsSiteDuplicate": {
+    "message": "$1 is already on."
+  },
+  "optionsAddSite": {
+    "message": "+ Add site"
+  },
+  "optionsNewSite": {
+    "message": "New site"
+  },
+  "optionsSiteSearchPlaceholder": {
+    "message": "Search sites..."
+  },
+  "optionsSelectSite": {
+    "message": "Select site “$1”"
+  },
+  "optionsSelectAllSites": {
+    "message": "Select all visible sites"
+  },
+  "optionsSitesSelectedCount": {
+    "message": "$1 selected"
+  },
+  "optionsRemoveSelected": {
+    "message": "Remove selected"
+  },
+  "optionsSiteRemoveConfirm": {
+    "message": "Remove site “$1”? Tags there will no longer be marked."
+  },
+  "optionsSitesBulkRemoveConfirm": {
+    "message": "Remove $1 selected sites?"
+  },
+  "optionsSitesRemoved": {
+    "message": "$1 sites removed. Reload pages already open on them."
+  },
+  "optionsNoMatchingSitesTitle": {
+    "message": "No matching sites"
+  },
+  "optionsNoMatchingSitesBody": {
+    "message": "Try another search."
+  },
+  "optionsClearSearch": {
+    "message": "Clear search"
+  },
   "optionsDeleteConfirm": {
     "message": "Delete rule \"$1\"?"
   },
@@ -502,5 +586,11 @@
   },
   "guideStepTuneBody": {
     "message": "Use Manage rules to edit colors, pause rules, or change match modes."
+  },
+  "optionsSiteEditing": {
+    "message": "Editing “$1”"
+  },
+  "optionsSiteReplacePartial": {
+    "message": "$1 was added, but $2 could not be removed. Both sites remain enabled; remove the old address manually."
   }
 }

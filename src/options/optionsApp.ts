@@ -10,6 +10,8 @@ import type {
 } from "../core/types";
 import { ACTION_STYLE_PRESETS } from "../core/actionStyles";
 import { LOG_PREFIX } from "../shared/constants";
+import { AO3_HOST, getCustomHosts, parseCustomHostInput, toCustomOriginPattern } from "../shared/customHosts";
+import { getExtensionApi } from "../shared/extensionApi";
 import { formatRuleSaveError } from "../shared/ruleError";
 import {
   getLocalizedActionLabel,
@@ -38,6 +40,7 @@ type ActionFilter = RuleAction | "all";
 type CategoryFilter = TagCategory | "all-categories";
 type StatusFilter = "all" | "enabled" | "disabled";
 type EditorMode = "create" | "edit" | "styles";
+type SiteMessage = { tone: "success" | "error"; text: string };
 
 export interface OptionsAppDeps {
   listRules(): Promise<Rule[]>;
@@ -50,8 +53,23 @@ export interface OptionsAppDeps {
   saveSettings(patch: Partial<Settings>): Promise<Settings>;
   confirmDelete(rule: Rule): boolean;
   confirmBulkDelete(count: number): boolean;
+  confirmRemoveSites(hosts: readonly string[]): boolean;
   alertError(message: string): void;
+  listCustomHosts(): Promise<string[]>;
+  requestCustomHost(host: string): Promise<boolean>;
+  removeCustomHosts(hosts: readonly string[]): Promise<boolean>;
+  addCustomHostsListener(callback: () => void): void;
   logError(error: unknown): void;
+}
+
+interface ChromeLike {
+  permissions?: {
+    getAll(): Promise<{ origins?: string[] }>;
+    request(permissions: { origins: string[] }): Promise<boolean>;
+    remove(permissions: { origins: string[] }): Promise<boolean>;
+    onAdded?: { addListener(callback: () => void): void };
+    onRemoved?: { addListener(callback: () => void): void };
+  };
 }
 
 const ACTIONS: readonly RuleAction[] = ["highlight", "warn", "hideWork"];
@@ -64,6 +82,7 @@ export async function renderOptionsApp(
 ): Promise<void> {
   let allRules = await deps.listRules();
   let settings = await deps.getSettings();
+  let customHosts = await listCustomHostsSafely();
   let filterText = "";
   let filterAction: ActionFilter = "all";
   let filterCategory: CategoryFilter = "all-categories";
@@ -77,25 +96,42 @@ export async function renderOptionsApp(
   let storagePending = false;
   let storageError = "";
   const disabledControls = new Map<HTMLInputElement | HTMLSelectElement | HTMLButtonElement, boolean>();
+  let sitesOpen = false;
+  let siteFilterText = "";
+  let selectedHosts = new Set<string>();
+  let siteEditorOpen = false;
+  let editingHost: string | null = null;
+  let siteDraft = "";
+  // Page-level results (removals, saved edits) vs. form feedback shown beside the input.
+  let siteMessage: SiteMessage | null = null;
+  let siteFormMessage: SiteMessage | null = null;
+  let sitePending = false;
 
   setLanguagePreference(settings.languagePreference);
   applyDocumentLanguage();
   container.addEventListener("click", closeEditorOnOutsideClick);
+  deps.addCustomHostsListener(() => {
+    // Picks up access granted or revoked from the browser's own extension settings.
+    void listCustomHostsSafely().then((hosts) => {
+      if (sitePending || hosts.join("\n") === customHosts.join("\n")) return;
+      customHosts = hosts;
+      if (sitesOpen) renderPage();
+    });
+  });
   renderPage();
 
   function renderPage(): void {
     syncSelectedRuleIds();
+    syncSiteState();
     container.textContent = "";
 
     const shell = document.createElement("main");
     shell.className = "options-shell";
     shell.dataset.optionsShell = "true";
 
-    renderHeader(shell);
-
     const workspace = document.createElement("section");
     workspace.className = "options-workspace";
-    workspace.append(createSidebar(), createManagerPanel());
+    workspace.append(createSidebar(), sitesOpen ? createSitesPage() : createManagerPanel());
     shell.appendChild(workspace);
 
     const errorNotice = document.createElement("p");
@@ -110,33 +146,6 @@ export async function renderOptionsApp(
     restoreRuleListScroll();
   }
 
-  function renderHeader(parent: HTMLElement): void {
-    const header = document.createElement("header");
-    header.className = "options-header";
-
-    const eyebrow = document.createElement("p");
-    eyebrow.className = "options-eyebrow";
-    eyebrow.textContent = t("optionsEyebrow");
-
-    const title = document.createElement("h1");
-    title.textContent = t("optionsTitle");
-
-    const subtitle = document.createElement("p");
-    subtitle.className = "options-subtitle";
-    subtitle.textContent = t("optionsSubtitle");
-
-    const copy = document.createElement("div");
-    copy.append(eyebrow, title, subtitle);
-
-    const count = document.createElement("p");
-    count.className = "options-count";
-    count.textContent = t("optionsRulesCount", [allRules.length]);
-    count.dataset.optionsCount = "true";
-
-    header.append(copy, count);
-    parent.appendChild(header);
-  }
-
   function createSidebar(): HTMLElement {
     const sidebar = document.createElement("aside");
     sidebar.className = "options-sidebar";
@@ -145,9 +154,7 @@ export async function renderOptionsApp(
     brand.className = "options-brand";
     const brandName = document.createElement("strong");
     brandName.append("AO3 Tag", document.createElement("br"), "Highlighter");
-    const brandSection = document.createElement("span");
-    brandSection.textContent = t("optionsRuleSettings");
-    brand.append(brandName, brandSection);
+    brand.appendChild(brandName);
 
     const nav = document.createElement("nav");
     nav.className = "options-nav";
@@ -159,7 +166,7 @@ export async function renderOptionsApp(
     for (const [label, status, value] of navItems) {
       const item = document.createElement("button");
       item.type = "button";
-      item.className = status === filterStatus ? "options-nav-item is-active" : "options-nav-item";
+      item.className = !sitesOpen && status === filterStatus ? "options-nav-item is-active" : "options-nav-item";
       item.dataset.sidebarStatusFilter = status;
       const itemLabel = document.createElement("span");
       itemLabel.textContent = label;
@@ -168,12 +175,24 @@ export async function renderOptionsApp(
       item.append(itemLabel, itemValue);
       item.addEventListener("click", () => {
         rememberRuleListScroll();
+        sitesOpen = false;
         filterStatus = status;
         closeEditorIfSelectionIsFilteredOut();
         renderPage();
       });
       nav.appendChild(item);
     }
+
+    const sitesButton = document.createElement("button");
+    sitesButton.type = "button";
+    sitesButton.className = sitesOpen ? "options-nav-item is-active" : "options-nav-item";
+    sitesButton.dataset.optionsSites = "true";
+    sitesButton.dataset.optionsEditorActivator = "true";
+    sitesButton.textContent = t("optionsSites");
+    if (sitesOpen) sitesButton.setAttribute("aria-current", "page");
+    sitesButton.setAttribute("aria-controls", "options-sites-page");
+    sitesButton.addEventListener("click", openSitesPage);
+    nav.appendChild(sitesButton);
 
     const note = document.createElement("p");
     note.className = "options-sidebar-note";
@@ -220,11 +239,9 @@ export async function renderOptionsApp(
     top.className = "options-manager-top";
 
     const copy = document.createElement("div");
-    const title = document.createElement("h2");
+    const title = document.createElement("h1");
     title.textContent = t("optionsRules");
-    const subtitle = document.createElement("p");
-    subtitle.textContent = t("optionsRulesSubtitle");
-    copy.append(title, subtitle);
+    copy.appendChild(title);
 
     const addButton = document.createElement("button");
     addButton.type = "button";
@@ -622,16 +639,6 @@ export async function renderOptionsApp(
     const title = document.createElement("h2");
     title.textContent = isEditing && rule ? t("optionsEditingRule", [rule.pattern]) : t("optionsNewRule");
 
-    const mode = document.createElement("p");
-    mode.className = "options-editor-mode";
-    mode.textContent = isEditing ? t("optionsEditSelectedRule") : t("optionsCreateRule");
-
-    const hint = document.createElement("p");
-    hint.className = "options-editor-hint";
-    hint.textContent = isEditing
-      ? t("optionsEditHint")
-      : t("optionsCreateHint");
-
     const form = document.createElement("form");
     form.dataset.ruleForm = "true";
     form.setAttribute("aria-describedby", "options-storage-error");
@@ -678,7 +685,7 @@ export async function renderOptionsApp(
       }, true);
     });
 
-    editor.append(mode, title, hint, form);
+    editor.append(title, form);
     return editor;
   }
 
@@ -687,10 +694,6 @@ export async function renderOptionsApp(
     editor.className = "options-editor options-style-editor is-open";
     editor.ariaHidden = "false";
     editor.dataset.optionsEditor = "true";
-
-    const mode = document.createElement("p");
-    mode.className = "options-editor-mode";
-    mode.textContent = t("optionsTagAppearance");
 
     const title = document.createElement("h2");
     title.textContent = t("optionsTagStyles");
@@ -726,8 +729,440 @@ export async function renderOptionsApp(
       });
     });
 
-    editor.append(mode, title, hint, form);
+    editor.append(title, hint, form);
     return editor;
+  }
+
+  function createSitesPage(): HTMLElement {
+    const page = document.createElement("section");
+    page.className = "options-manager options-sites-page";
+    page.dataset.optionsSitesPage = "true";
+    page.id = "options-sites-page";
+
+    const top = document.createElement("div");
+    top.className = "options-manager-top";
+
+    const copy = document.createElement("div");
+    const title = document.createElement("h1");
+    title.textContent = t("optionsSites");
+    copy.appendChild(title);
+
+    const addButton = document.createElement("button");
+    addButton.type = "button";
+    addButton.className = "options-add-button";
+    addButton.dataset.optionsSiteAdd = "true";
+    addButton.dataset.optionsEditorActivator = "true";
+    addButton.textContent = t("optionsAddSite");
+    addButton.addEventListener("click", openSiteCreateEditor);
+
+    const actionGroup = document.createElement("div");
+    actionGroup.className = "options-manager-actions";
+    actionGroup.appendChild(addButton);
+    top.append(copy, actionGroup);
+
+    const toolbar = document.createElement("div");
+    toolbar.className = "options-toolbar options-site-toolbar";
+    const search = document.createElement("input");
+    search.type = "search";
+    search.placeholder = t("optionsSiteSearchPlaceholder");
+    search.value = siteFilterText;
+    search.dataset.optionsSiteSearch = "true";
+    search.addEventListener("input", () => {
+      siteFilterText = search.value.trim().toLowerCase();
+      renderFilteredSites();
+    });
+    toolbar.appendChild(search);
+
+    const pageMessage = createSiteMessage(siteMessage);
+    pageMessage.dataset.sitesMessage = "true";
+
+    const content = document.createElement("div");
+    content.className = siteEditorOpen ? "options-content-grid has-editor" : "options-content-grid";
+    content.append(createSiteList(), createSiteEditor());
+
+    page.append(top, toolbar, createSiteBulkBar(), pageMessage, content);
+    return page;
+  }
+
+  function renderFilteredSites(): void {
+    if (siteEditorOpen && editingHost && !getFilteredHosts().includes(editingHost)) {
+      // Same as rules: an edited item that leaves the filtered list closes the editor.
+      closeSiteEditor();
+      renderPage();
+      const search = container.querySelector<HTMLInputElement>("[data-options-site-search]");
+      search?.focus();
+      search?.setSelectionRange(search.value.length, search.value.length);
+      return;
+    }
+    container.querySelector("[data-options-site-bulk-bar]")?.replaceWith(createSiteBulkBar());
+    container.querySelector("[data-options-site-list]")?.replaceWith(createSiteList());
+  }
+
+  function getFilteredHosts(): string[] {
+    return [AO3_HOST, ...customHosts].filter((host) => host.includes(siteFilterText));
+  }
+
+  function createSiteBulkBar(): HTMLElement {
+    const bar = document.createElement("div");
+    bar.className = selectedHosts.size > 0 ? "options-bulk-bar is-active" : "options-bulk-bar";
+    bar.dataset.optionsSiteBulkBar = "true";
+    if (selectedHosts.size === 0) return bar;
+
+    const count = document.createElement("span");
+    count.textContent = t("optionsSitesSelectedCount", [selectedHosts.size]);
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "options-bulk-delete";
+    removeButton.dataset.optionsSiteBulkRemove = "true";
+    removeButton.textContent = t("optionsRemoveSelected");
+    removeButton.addEventListener("click", () => removeSites([...selectedHosts]));
+
+    bar.append(count, removeButton);
+    return bar;
+  }
+
+  function createSiteList(): HTMLElement {
+    const list = document.createElement("section");
+    list.className = "options-rule-list options-site-list";
+    list.dataset.optionsSiteList = "true";
+
+    const hosts = getFilteredHosts();
+    if (hosts.length === 0) {
+      list.appendChild(createSiteEmptyState());
+      return list;
+    }
+
+    const header = document.createElement("div");
+    header.className = "options-table-header";
+    header.appendChild(createSiteSelectAllCell(hosts.filter((host) => host !== AO3_HOST)));
+    for (const label of [t("optionsSiteField"), ""]) {
+      const cell = document.createElement("span");
+      cell.textContent = label;
+      header.appendChild(cell);
+    }
+    list.appendChild(header);
+
+    for (const host of hosts) list.appendChild(host === AO3_HOST ? createDefaultSiteRow() : createSiteRow(host));
+    return list;
+  }
+
+  function createSiteEmptyState(): HTMLElement {
+    const empty = document.createElement("div");
+    empty.className = "options-empty";
+
+    const title = document.createElement("h3");
+    title.textContent = t("optionsNoMatchingSitesTitle");
+    const copy = document.createElement("p");
+    copy.textContent = t("optionsNoMatchingSitesBody");
+
+    const action = document.createElement("button");
+    action.type = "button";
+    action.className = "options-empty-action";
+    action.textContent = t("optionsClearSearch");
+    action.addEventListener("click", () => {
+      siteFilterText = "";
+      renderPage();
+    });
+
+    empty.append(title, copy, action);
+    return empty;
+  }
+
+  function createSiteSelectAllCell(visibleHosts: readonly string[]): HTMLElement {
+    const cell = document.createElement("div");
+    cell.className = "rule-select-cell";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.dataset.optionsSiteSelectAll = "true";
+    checkbox.ariaLabel = t("optionsSelectAllSites");
+    const selectedVisibleCount = visibleHosts.filter((host) => selectedHosts.has(host)).length;
+    checkbox.checked = visibleHosts.length > 0 && selectedVisibleCount === visibleHosts.length;
+    checkbox.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < visibleHosts.length;
+    checkbox.disabled = visibleHosts.length === 0;
+    checkbox.addEventListener("change", () => {
+      for (const host of visibleHosts) {
+        if (checkbox.checked) selectedHosts.add(host);
+        else selectedHosts.delete(host);
+      }
+      renderPage();
+    });
+
+    cell.appendChild(checkbox);
+    return cell;
+  }
+
+  function createDefaultSiteRow(): HTMLElement {
+    const row = document.createElement("article");
+    row.className = "options-rule-row options-site-row is-locked";
+    row.dataset.siteHost = AO3_HOST;
+
+    const label = document.createElement("span");
+    label.className = "style-locked-label";
+    label.textContent = t("optionsSiteDefault");
+    const actions = document.createElement("div");
+    actions.className = "rule-actions";
+    actions.appendChild(label);
+
+    row.append(document.createElement("div"), createSiteHostCell(AO3_HOST), actions);
+    return row;
+  }
+
+  function createSiteRow(host: string): HTMLElement {
+    const row = document.createElement("article");
+    row.className = `options-rule-row options-site-row${host === editingHost ? " is-selected" : ""}`;
+    row.dataset.siteHost = host;
+
+    const selectCell = document.createElement("div");
+    selectCell.className = "rule-select-cell";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.dataset.siteSelect = host;
+    checkbox.ariaLabel = t("optionsSelectSite", [host]);
+    checkbox.checked = selectedHosts.has(host);
+    checkbox.addEventListener("click", (event) => event.stopPropagation());
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) selectedHosts.add(host);
+      else selectedHosts.delete(host);
+      renderPage();
+    });
+    selectCell.appendChild(checkbox);
+
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.dataset.siteEdit = host;
+    edit.dataset.optionsEditorActivator = "true";
+    edit.textContent = t("optionsEdit");
+    edit.addEventListener("click", () => openSiteEditEditor(host));
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.dataset.siteRemove = host;
+    remove.textContent = t("optionsSiteRemove");
+    remove.addEventListener("click", () => removeSites([host]));
+
+    const actions = document.createElement("div");
+    actions.className = "rule-actions";
+    actions.append(edit, remove);
+
+    row.append(selectCell, createSiteHostCell(host), actions);
+    row.addEventListener("click", (event) => {
+      const target = event.target;
+      if (target instanceof HTMLButtonElement || target instanceof HTMLInputElement) return;
+      openSiteEditEditor(host);
+    });
+    return row;
+  }
+
+  function createSiteHostCell(host: string): HTMLElement {
+    const cell = createCell("rule-pattern sites-host", host);
+    cell.title = host;
+    return cell;
+  }
+
+  function createSiteEditor(): HTMLElement {
+    const editor = document.createElement("aside");
+    editor.className = siteEditorOpen ? "options-editor is-open" : "options-editor";
+    editor.ariaHidden = siteEditorOpen ? "false" : "true";
+    editor.dataset.optionsSiteEditor = "true";
+
+    const title = document.createElement("h2");
+    title.textContent = editingHost ? t("optionsSiteEditing", [editingHost]) : t("optionsNewSite");
+
+    const hint = document.createElement("p");
+    hint.className = "options-editor-hint";
+    hint.textContent = t("optionsSitesHint");
+
+    const form = document.createElement("form");
+    form.dataset.siteForm = "true";
+    form.noValidate = true;
+
+    const field = createFieldWrapper("host", t("optionsSiteField"));
+    const input = document.createElement("input");
+    input.type = "text";
+    input.name = "host";
+    input.id = "host";
+    input.value = siteDraft;
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.setAttribute("autocapitalize", "off");
+    input.setAttribute("aria-describedby", "options-site-form-message");
+    input.addEventListener("input", () => {
+      siteDraft = input.value;
+    });
+    field.appendChild(input);
+
+    const footer = document.createElement("div");
+    footer.className = "editor-actions";
+    const submit = document.createElement("button");
+    submit.type = "submit";
+    submit.textContent = editingHost ? t("optionsSave") : t("optionsSiteEnable");
+    footer.appendChild(submit);
+    form.append(field, footer);
+
+    const formMessage = createSiteMessage(siteFormMessage);
+    formMessage.id = "options-site-form-message";
+    formMessage.dataset.siteFormMessage = "true";
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (sitePending) return;
+      siteDraft = input.value;
+      const parsed = parseCustomHostInput(input.value);
+      if (!parsed.ok) {
+        showSiteFormMessage({ tone: "error", text: getSiteInputError(parsed.reason) });
+        return;
+      }
+      if (parsed.host === editingHost) {
+        closeSiteEditor();
+        renderPage();
+        return;
+      }
+      if (customHosts.includes(parsed.host)) {
+        showSiteFormMessage({ tone: "error", text: t("optionsSiteDuplicate", [parsed.host]) });
+        return;
+      }
+
+      // Firefox only allows permission requests inside the user gesture, so call before any await.
+      const previousHost = editingHost;
+      const request = deps.requestCustomHost(parsed.host);
+      void runSiteChange((async () => {
+        try {
+          if (!await request) {
+            siteFormMessage = { tone: "error", text: t("optionsSiteDenied") };
+            return;
+          }
+        } catch (error) {
+          deps.logError(error);
+          siteFormMessage = { tone: "error", text: t("optionsSiteFailed") };
+          return;
+        }
+
+        let replacementIncomplete = false;
+        if (previousHost) {
+          // Keep the original grant until the replacement has been approved.
+          try {
+            replacementIncomplete = !await deps.removeCustomHosts([previousHost]);
+          } catch (error) {
+            deps.logError(error);
+            replacementIncomplete = true;
+          }
+        }
+        closeSiteEditor();
+        siteMessage = replacementIncomplete && previousHost
+          ? { tone: "error", text: t("optionsSiteReplacePartial", [parsed.host, previousHost]) }
+          : { tone: "success", text: t("optionsSiteEnabled", [parsed.host]) };
+      })());
+    });
+
+    const note = document.createElement("p");
+    note.className = "options-editor-hint sites-note";
+    note.textContent = t("optionsSitesTrustNote");
+
+    editor.append(title, hint, form, formMessage, note);
+    return editor;
+  }
+
+  function createSiteMessage(message: SiteMessage | null): HTMLElement {
+    const notice = document.createElement("p");
+    notice.className = message ? `sites-message is-${message.tone}` : "sites-message";
+    notice.setAttribute("role", "status");
+    notice.textContent = message?.text ?? "";
+    notice.hidden = !message;
+    return notice;
+  }
+
+  function removeSites(hosts: readonly string[]): void {
+    if (sitePending || hosts.length === 0 || !deps.confirmRemoveSites(hosts)) return;
+    // Start the permission change inside the user gesture, before any await.
+    const removal = deps.removeCustomHosts(hosts);
+    void runSiteChange((async () => {
+      siteFormMessage = null;
+      try {
+        if (!await removal) {
+          siteMessage = { tone: "error", text: t("optionsSiteFailed") };
+          return;
+        }
+      } catch (error) {
+        deps.logError(error);
+        siteMessage = { tone: "error", text: t("optionsSiteFailed") };
+        return;
+      }
+      for (const host of hosts) selectedHosts.delete(host);
+      if (editingHost && hosts.includes(editingHost)) closeSiteEditor();
+      siteMessage = {
+        tone: "success",
+        text: hosts.length === 1 ? t("optionsSiteRemoved", [hosts[0]]) : t("optionsSitesRemoved", [hosts.length]),
+      };
+    })());
+  }
+
+  async function runSiteChange(change: Promise<void>): Promise<void> {
+    sitePending = true;
+    const page = container.querySelector<HTMLElement>("[data-options-sites-page]");
+    page?.setAttribute("aria-busy", "true");
+    for (const control of page?.querySelectorAll<HTMLButtonElement | HTMLInputElement>("button, input") ?? []) {
+      control.disabled = true;
+    }
+
+    await change;
+    customHosts = await listCustomHostsSafely();
+    sitePending = false;
+    // syncSiteState closes the editor if the edited site is gone, wherever it was removed.
+    renderPage();
+  }
+
+  function showSiteFormMessage(message: SiteMessage): void {
+    siteFormMessage = message;
+    const notice = container.querySelector<HTMLElement>("[data-site-form-message]");
+    if (!notice) return;
+    notice.className = `sites-message is-${message.tone}`;
+    notice.textContent = message.text;
+    notice.hidden = false;
+  }
+
+  function syncSiteState(): void {
+    selectedHosts = new Set([...selectedHosts].filter((host) => customHosts.includes(host)));
+    if (editingHost && !customHosts.includes(editingHost)) closeSiteEditor();
+  }
+
+  function openSiteCreateEditor(): void {
+    if (sitePending) return;
+    if (editingHost) siteDraft = "";
+    editingHost = null;
+    siteEditorOpen = true;
+    siteMessage = null;
+    siteFormMessage = null;
+    renderPage();
+    container.querySelector<HTMLInputElement>("[data-site-form] input")?.focus();
+  }
+
+  function openSiteEditEditor(host: string): void {
+    if (sitePending) return;
+    editingHost = host;
+    siteDraft = host;
+    siteEditorOpen = true;
+    siteMessage = null;
+    siteFormMessage = null;
+    renderPage();
+    container.querySelector<HTMLInputElement>("[data-site-form] input")?.focus();
+  }
+
+  function closeSiteEditor(): void {
+    siteEditorOpen = false;
+    editingHost = null;
+    siteDraft = "";
+    siteFormMessage = null;
+  }
+
+  async function listCustomHostsSafely(): Promise<string[]> {
+    try {
+      return await deps.listCustomHosts();
+    } catch (error) {
+      deps.logError(error);
+      return [];
+    }
   }
 
   function createStyleEditorRow(
@@ -885,6 +1320,14 @@ export async function renderOptionsApp(
     renderPage();
   }
 
+  function openSitesPage(): void {
+    rememberRuleListScroll();
+    if (!sitesOpen) closeSiteEditor();
+    sitesOpen = true;
+    siteMessage = null;
+    renderPage();
+  }
+
   function openEditEditor(ruleId: string): void {
     if (storagePending) return;
     rememberRuleListScroll();
@@ -929,6 +1372,10 @@ export async function renderOptionsApp(
 
   function closeEditorOnOutsideClick(event: MouseEvent): void {
     const target = event.target;
+    if (sitesOpen) {
+      closeSiteEditorOnOutsideClick(target);
+      return;
+    }
     if (storagePending || !editorOpen || !(target instanceof Element)) return;
     if (
       target.closest("[data-options-editor]") ||
@@ -941,6 +1388,21 @@ export async function renderOptionsApp(
 
     rememberRuleListScroll();
     closeEditor();
+    renderPage();
+  }
+
+  function closeSiteEditorOnOutsideClick(target: EventTarget | null): void {
+    if (sitePending || !siteEditorOpen || !(target instanceof Element)) return;
+    if (
+      target.closest("[data-options-site-editor]") ||
+      target.closest("[data-options-site-list]") ||
+      target.closest("[data-options-editor-activator]") ||
+      target.closest("[data-options-sidebar-control]")
+    ) {
+      return;
+    }
+
+    closeSiteEditor();
     renderPage();
   }
 
@@ -1086,6 +1548,12 @@ function formatCategory(category: TagCategory): string {
   return t("categoryFreeform");
 }
 
+function getSiteInputError(reason: "empty" | "invalid" | "ao3"): string {
+  if (reason === "empty") return t("optionsSiteEmpty");
+  if (reason === "ao3") return t("optionsSiteIsAo3");
+  return t("optionsSiteInvalid");
+}
+
 function formatMatchMode(matchMode: MatchMode): string {
   if (matchMode === "exact") return t("labelExact");
   if (matchMode === "contains") return t("labelContains");
@@ -1104,7 +1572,30 @@ function createRealDeps(): OptionsAppDeps {
     saveSettings: defaultSaveSettings,
     confirmDelete: (rule) => window.confirm(t("optionsDeleteConfirm", [rule.pattern])),
     confirmBulkDelete: (count) => window.confirm(t("optionsBulkDeleteConfirm", [count])),
+    confirmRemoveSites: (hosts) => window.confirm(hosts.length === 1
+      ? t("optionsSiteRemoveConfirm", [hosts[0]])
+      : t("optionsSitesBulkRemoveConfirm", [hosts.length])),
     alertError: (message) => window.alert(message),
+    listCustomHosts: async () => {
+      const permissionsApi = getExtensionApi<ChromeLike>().permissions;
+      if (!permissionsApi) return [];
+      return getCustomHosts((await permissionsApi.getAll()).origins ?? []);
+    },
+    requestCustomHost: async (host) => {
+      const permissionsApi = getExtensionApi<ChromeLike>().permissions;
+      if (!permissionsApi) return false;
+      return permissionsApi.request({ origins: [toCustomOriginPattern(host)] });
+    },
+    removeCustomHosts: async (hosts) => {
+      const permissionsApi = getExtensionApi<ChromeLike>().permissions;
+      if (!permissionsApi) return false;
+      return permissionsApi.remove({ origins: hosts.map(toCustomOriginPattern) });
+    },
+    addCustomHostsListener: (callback) => {
+      const permissionsApi = getExtensionApi<ChromeLike>().permissions;
+      permissionsApi?.onAdded?.addListener(callback);
+      permissionsApi?.onRemoved?.addListener(callback);
+    },
     logError: (error) => {
       console.error(`${LOG_PREFIX} Options error:`, error);
     },

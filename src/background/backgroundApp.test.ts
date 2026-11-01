@@ -81,6 +81,21 @@ describe("initBackgroundApp", () => {
     expect(sendMessageToTab).toHaveBeenCalledWith(2, { type: "RULES_UPDATED" });
   });
 
+  it("does not let a tab that never answers block the other tabs", async () => {
+    const listenerRef = createListenerRef();
+    const sendMessageToTab = vi.fn((tabId: number) => (tabId === 1 ? new Promise<never>(() => {}) : Promise.resolve()));
+    const { deps } = createDeps({
+      addMessageListener: listenerRef.addMessageListener,
+      sendMessageToTab,
+    });
+
+    initBackgroundApp(deps);
+    listenerRef.listener?.({ type: "RULES_UPDATED" }, vi.fn());
+    await flushAsyncHandlers();
+
+    expect(sendMessageToTab).toHaveBeenCalledWith(2, { type: "RULES_UPDATED" });
+  });
+
   it("logs query failures without throwing", async () => {
     const listenerRef = createListenerRef();
     const logError = vi.fn();
@@ -113,6 +128,72 @@ describe("initBackgroundApp", () => {
 
     expect(sendResponse).toHaveBeenCalledWith({ ok: true });
   });
+
+  it("syncs custom host scripts on start and after each permission change", async () => {
+    let permissionsChanged: (() => void) | null = null;
+    const { deps, syncCustomHostScripts } = createDeps({
+      addPermissionsChangedListener: vi.fn((callback: () => void) => {
+        permissionsChanged = callback;
+      }),
+    });
+
+    initBackgroundApp(deps);
+    await flushAsyncHandlers();
+    expect(syncCustomHostScripts).toHaveBeenCalledTimes(1);
+
+    permissionsChanged!();
+    await flushAsyncHandlers();
+    expect(syncCustomHostScripts).toHaveBeenCalledTimes(2);
+  });
+
+  it("runs custom host syncs one at a time", async () => {
+    let permissionsChanged: (() => void) | null = null;
+    let finishFirstSync: () => void = () => undefined;
+    const syncCustomHostScripts = vi
+      .fn<() => Promise<void>>()
+      .mockImplementationOnce(() => new Promise<void>((resolve) => { finishFirstSync = resolve; }))
+      .mockResolvedValue(undefined);
+    const { deps } = createDeps({
+      syncCustomHostScripts,
+      addPermissionsChangedListener: vi.fn((callback: () => void) => {
+        permissionsChanged = callback;
+      }),
+    });
+
+    initBackgroundApp(deps);
+    permissionsChanged!();
+    await flushAsyncHandlers();
+    expect(syncCustomHostScripts).toHaveBeenCalledTimes(1);
+
+    finishFirstSync();
+    await flushAsyncHandlers();
+    expect(syncCustomHostScripts).toHaveBeenCalledTimes(2);
+  });
+
+  it("logs custom host sync failures and keeps syncing later changes", async () => {
+    let permissionsChanged: (() => void) | null = null;
+    const syncError = new Error("register failed");
+    const logError = vi.fn();
+    const syncCustomHostScripts = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(syncError)
+      .mockResolvedValue(undefined);
+    const { deps } = createDeps({
+      logError,
+      syncCustomHostScripts,
+      addPermissionsChangedListener: vi.fn((callback: () => void) => {
+        permissionsChanged = callback;
+      }),
+    });
+
+    initBackgroundApp(deps);
+    await flushAsyncHandlers();
+    expect(logError).toHaveBeenCalledWith(syncError);
+
+    permissionsChanged!();
+    await flushAsyncHandlers();
+    expect(syncCustomHostScripts).toHaveBeenCalledTimes(2);
+  });
 });
 
 function createDeps(overrides: Partial<BackgroundAppDeps> = {}) {
@@ -120,6 +201,8 @@ function createDeps(overrides: Partial<BackgroundAppDeps> = {}) {
   const sendMessageToTab = vi.fn(async () => undefined);
   const addMessageListener = vi.fn();
   const addInstalledListener = vi.fn();
+  const addPermissionsChangedListener = vi.fn();
+  const syncCustomHostScripts = vi.fn(async () => undefined);
   const logInfo = vi.fn();
   const logError = vi.fn();
 
@@ -128,6 +211,8 @@ function createDeps(overrides: Partial<BackgroundAppDeps> = {}) {
     sendMessageToTab,
     addMessageListener,
     addInstalledListener,
+    addPermissionsChangedListener,
+    syncCustomHostScripts,
     logInfo,
     logError,
     ...overrides,
@@ -139,6 +224,7 @@ function createDeps(overrides: Partial<BackgroundAppDeps> = {}) {
     sendMessageToTab: deps.sendMessageToTab as typeof sendMessageToTab,
     addMessageListener: deps.addMessageListener as typeof addMessageListener,
     addInstalledListener: deps.addInstalledListener as typeof addInstalledListener,
+    syncCustomHostScripts: deps.syncCustomHostScripts as typeof syncCustomHostScripts,
     logInfo: deps.logInfo as typeof logInfo,
     logError: deps.logError as typeof logError,
   };
