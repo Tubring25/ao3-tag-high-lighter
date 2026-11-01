@@ -41,6 +41,16 @@ function setup() {
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("background-owned storage mutations", () => {
+  it("answers a mutation without waiting for AO3 tabs to acknowledge the broadcast", async () => {
+    setup();
+    const tabsApi = (globalThis as unknown as { chrome: { tabs: { sendMessage: unknown } } }).chrome.tabs;
+    const tabSend = vi.fn(() => new Promise<never>(() => {}));
+    tabsApi.sendMessage = tabSend;
+
+    await expect(saveSettings({ extensionEnabled: false })).resolves.toMatchObject({ extensionEnabled: false });
+    await vi.waitFor(() => expect(tabSend).toHaveBeenCalledWith(1, { type: "SETTINGS_UPDATED" }));
+  });
+
   it("serializes concurrent clients, merges updates and settings, and keeps MV3 response channels open", async () => {
     const { store, channels } = setup();
     const rules = await Promise.all(Array.from({ length: 12 }, (_, index) => addRule(input(`tag-${index}`))));

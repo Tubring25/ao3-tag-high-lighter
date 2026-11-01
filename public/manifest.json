@@ -10,8 +10,9 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "scripting"],
   "host_permissions": ["https://*.archiveofourown.org/*"],
+  "optional_host_permissions": ["https://*/*"],
   "background": {
     "service_worker": "background/index.js",
     "type": "module"

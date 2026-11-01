@@ -217,7 +217,7 @@ describe("renderPopupApp", () => {
   it("renders the access notice before page status when AO3 access is missing", async () => {
     const container = document.createElement("div");
 
-    await renderPopupApp(container, createDeps({ hasAo3Access: vi.fn(async () => false) }));
+    await renderPopupApp(container, createNoAccessDeps());
 
     const notice = container.querySelector("[data-popup-access-notice]");
     expect(notice?.textContent).toContain("AO3 access is off.");
@@ -230,7 +230,7 @@ describe("renderPopupApp", () => {
     const container = document.createElement("div");
     const requestAo3Access = vi.fn(async () => true);
 
-    await renderPopupApp(container, createDeps({ hasAo3Access: vi.fn(async () => false), requestAo3Access }));
+    await renderPopupApp(container, createNoAccessDeps({ requestAo3Access }));
     container.querySelector<HTMLButtonElement>("[data-popup-grant-access]")?.click();
 
     expect(requestAo3Access).toHaveBeenCalledTimes(1);
@@ -247,7 +247,7 @@ describe("renderPopupApp", () => {
   ])("keeps the grant button when the access request is %s", async (_label, requestAo3Access) => {
     const container = document.createElement("div");
 
-    await renderPopupApp(container, createDeps({ hasAo3Access: vi.fn(async () => false), requestAo3Access }));
+    await renderPopupApp(container, createNoAccessDeps({ requestAo3Access }));
     container.querySelector<HTMLButtonElement>("[data-popup-grant-access]")?.click();
     await flushAsyncHandlers();
 
@@ -255,6 +255,16 @@ describe("renderPopupApp", () => {
     expect(button).not.toBeNull();
     expect(button?.disabled).toBe(false);
     expect(container.textContent).not.toContain("Access granted.");
+  });
+
+  it("does not render the access notice when the page content script responds", async () => {
+    const container = document.createElement("div");
+
+    // Chromium reports false for the wildcard when only archiveofourown.org itself is granted.
+    await renderPopupApp(container, createDeps({ hasAo3Access: vi.fn(async () => false) }));
+
+    expect(container.querySelector("[data-popup-access-notice]")).toBeNull();
+    expect(container.querySelector("[data-popup-notice]")).not.toBeNull();
   });
 
   it("treats a failed access check as granted", async () => {
@@ -349,6 +359,16 @@ function createDeps(overrides: Partial<PopupAppDeps> = {}): PopupAppDeps {
     logError: vi.fn(),
     ...overrides,
   };
+}
+
+function createNoAccessDeps(overrides: Partial<PopupAppDeps> = {}): PopupAppDeps {
+  return createDeps({
+    hasAo3Access: vi.fn(async () => false),
+    sendMessageToTab: vi.fn(async () => {
+      throw new Error("Receiving end does not exist");
+    }),
+    ...overrides,
+  });
 }
 
 function createSettings(overrides: Partial<Settings> = {}): Settings {

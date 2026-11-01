@@ -75,11 +75,7 @@ export async function renderGuideApp(
     const title = document.createElement("h1");
     title.textContent = t("guideTitle");
 
-    const body = document.createElement("p");
-    body.className = "guide-lede";
-    body.textContent = t("guideLede");
-
-    copy.append(eyebrow, title, body);
+    copy.append(eyebrow, title);
 
     const jump = document.createElement("a");
     jump.className = "guide-primary-link";
@@ -105,9 +101,7 @@ export async function renderGuideApp(
 
     const title = document.createElement("h2");
     title.textContent = t("guideControls");
-    const hint = document.createElement("p");
-    hint.textContent = t("guideControlsHint");
-    builder.append(title, hint, createTagPicker(), createActionPicker());
+    builder.append(title, createTagPicker(), createActionPicker());
 
     section.append(preview, builder);
     return section;
@@ -166,9 +160,6 @@ export async function renderGuideApp(
     const sidebar = document.createElement("div");
     sidebar.className = "guide-match-mode-sidebar";
 
-    const heading = document.createElement("h3");
-    heading.textContent = t("guideMatchMode");
-
     const modes = document.createElement("div");
     modes.className = "guide-segmented";
 
@@ -186,7 +177,9 @@ export async function renderGuideApp(
       modes.appendChild(button);
     }
 
-    sidebar.append(heading, modes);
+    modes.setAttribute("role", "group");
+    modes.setAttribute("aria-label", t("guideMatchMode"));
+    sidebar.appendChild(modes);
     group.append(sidebar, createMatchModePreview());
     return group;
   }

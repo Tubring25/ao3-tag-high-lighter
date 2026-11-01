@@ -30,55 +30,19 @@ button {
 
 .options-shell {
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   max-width: 1600px;
+  min-height: 100vh;
   margin: 0 auto;
   padding: 28px;
 }
 
-.options-header {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 18px;
-}
-
-.options-eyebrow,
-.options-subtitle,
-.options-count {
-  margin: 0;
-}
-
-.options-eyebrow {
-  color: #990000;
-  font: 700 12px/1.3 var(--ao3th-font-mono);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.options-header h1 {
-  margin: 4px 0 4px;
-  color: #111111;
-  font: 700 clamp(34px, 5vw, 52px)/0.95 var(--ao3th-font-display);
-}
-
-.options-subtitle {
-  max-width: 720px;
-  color: #3f4348;
-  font-size: 14px;
-  line-height: 1.45;
-}
-
-.options-count {
-  color: #3f4348;
-  font: 13px/1.35 var(--ao3th-font-mono);
-  white-space: nowrap;
-}
-
 .options-workspace {
+  flex: 1 0 auto;
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr);
-  min-height: 700px;
+  min-height: 640px;
   border: 1px solid #d5d8dc;
   background: #ffffff;
 }
@@ -97,14 +61,6 @@ button {
   display: block;
   color: #111111;
   font: 700 18px/1.05 var(--ao3th-font-display);
-}
-
-.options-brand span {
-  display: block;
-  margin-top: 8px;
-  color: #5f6368;
-  font-size: 12px;
-  line-height: 1.35;
 }
 
 .options-nav {
@@ -206,14 +162,13 @@ button {
   gap: 8px;
 }
 
-.options-manager-top h2,
+.options-manager-top h1,
 .options-editor h2 {
   margin: 0;
   color: #111111;
   font: 700 24px/1.1 var(--ao3th-font-display);
 }
 
-.options-manager-top p,
 .options-editor-hint {
   margin: 5px 0 0;
   color: #5f6368;
@@ -640,14 +595,6 @@ button {
   visibility: visible;
 }
 
-.options-editor-mode {
-  margin: 0 0 6px;
-  color: #990000;
-  font: 700 11px/1.3 var(--ao3th-font-mono);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 .options-editor h2 {
   overflow-wrap: anywhere;
 }
@@ -781,6 +728,59 @@ button {
   text-transform: uppercase;
 }
 
+.options-toolbar.options-site-toolbar {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.options-site-list .options-table-header,
+.options-site-list .options-rule-row {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.options-site-row.is-locked {
+  background: #f3f4f6;
+  cursor: default;
+}
+
+.sites-host {
+  font-family: var(--ao3th-font-mono);
+}
+
+.rule-actions button[data-site-remove] {
+  color: #990000;
+}
+
+.sites-message {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border-left: 4px solid #8ca2c4;
+  background: #ffffff;
+  color: #3f4348;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+[data-sites-message] {
+  margin: -6px 0 14px;
+  border: 1px solid #d5d8dc;
+  border-left-width: 4px;
+}
+
+.sites-message.is-success {
+  border-left-color: #990000;
+}
+
+.sites-message.is-error {
+  border-left-color: #990000;
+  color: #990000;
+}
+
+.sites-note {
+  margin-top: 16px;
+}
+
 .editor-actions {
   display: flex;
   justify-content: flex-end;
@@ -816,10 +816,6 @@ button {
     padding: 0;
   }
 
-  .options-header {
-    display: none;
-  }
-
   .options-workspace {
     width: 100vw;
     min-height: 100vh;
@@ -849,9 +845,46 @@ button {
   }
 }
 
+/* Side-by-side layouts: the workspace fills the window and the list/editor take the remaining height. */
+@media (min-width: 1081px) {
+  .options-workspace {
+    box-sizing: border-box;
+    height: calc(100vh - 56px);
+  }
+
+  .options-manager {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .options-content-grid {
+    flex: 1 1 0;
+    align-items: stretch;
+    min-height: 0;
+  }
+
+  .options-rule-list,
+  .options-editor {
+    height: auto;
+    min-height: 0;
+  }
+
+  .options-editor.is-open {
+    overflow: auto;
+  }
+}
+
+@media (min-width: 1081px) and (max-width: 1599px) {
+  .options-workspace {
+    height: 100vh;
+  }
+}
+
 @media (max-width: 1080px) {
   .options-workspace {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
   }
 
   .options-sidebar {
@@ -865,6 +898,10 @@ button {
 
   .options-nav {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  [data-options-sites] {
+    grid-column: 1 / -1;
   }
 
   .options-sidebar-note {
