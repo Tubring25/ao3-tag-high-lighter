@@ -30,7 +30,7 @@ export async function requestMutation<Operation extends keyof StorageOperations>
   const chromeApi = findExtensionApi<{
     runtime?: { sendMessage(message: unknown): Promise<StorageMutationResponse> };
   }>();
-  if (!chromeApi?.runtime) throw new Error("Chrome runtime message API is unavailable");
+  if (!chromeApi?.runtime) throw new Error("Extension runtime message API is unavailable");
   const response = await chromeApi.runtime.sendMessage({ type: "STORAGE_MUTATION", operation, args });
   if (!response || !response.ok) {
     throw new Error(response?.error ?? "Storage mutation received no response");
