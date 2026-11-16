@@ -21,6 +21,7 @@ async function setup() {
     root: document, getSettings: async () => settings, listRules: async () => rules,
     parseAo3Works, matchRules, renderMatches: rendered, clearRenderedMatches,
     mountHoverMenu: vi.fn(), unmountHoverMenu: vi.fn(), calculateHitStats,
+    detectInputMode: () => "pointer", watchInputMode: () => () => {},
     startPageObserver: (callback) => { domChange = callback; startPageObserver(callback); },
     stopPageObserver, debounce: (callback) => callback,
     addMessageListener: (callback) => { message = callback; }, logError: errors,

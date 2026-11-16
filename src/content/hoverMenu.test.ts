@@ -289,6 +289,225 @@ describe("hoverMenu", () => {
   });
 });
 
+describe("hoverMenu touch mode", () => {
+  afterEach(() => {
+    unmountHoverMenu({ resetPickMode: true });
+    document.body.innerHTML = "";
+  });
+
+  function mountTouch(work: ParsedWork, options: HoverMenuOptions = createOptions(), settings = createSettings()) {
+    mountHoverMenu([work], settings, { ...options, inputMode: "touch" });
+  }
+
+  function tapTag(tag: HTMLElement): Event {
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    tag.dispatchEvent(click);
+    return click;
+  }
+
+  it("shows the floating toggle instead of hover affordances", () => {
+    const work = createWork();
+    mountTouch(work);
+
+    expect(getTouchToggle()?.hidden).toBe(false);
+    expect(getTouchToggle()?.getAttribute("aria-label")).toBe("Pick a tag to add a rule");
+    expect(getShadowButton()).toBeNull();
+    expect(work.tags[0].element.hasAttribute("aria-keyshortcuts")).toBe(false);
+    expect(work.tags[0].element.hasAttribute("aria-description")).toBe(false);
+    work.tags[0].element.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    expect(work.tags[0].element.dataset.ao3thHovered).toBeUndefined();
+  });
+
+  it("lets tag links navigate while pick mode is off", () => {
+    const work = createWork();
+    mountTouch(work);
+
+    expect(tapTag(work.tags[0].element).defaultPrevented).toBe(false);
+    expect(getShadowMenu()?.hidden).toBe(true);
+  });
+
+  it("enters pick mode from the toggle", () => {
+    const work = createWork(["Slow Burn", "Angst"]);
+    mountTouch(work);
+
+    getTouchToggle()!.click();
+
+    expect(getTouchToggle()?.hidden).toBe(true);
+    expect(getTouchToggle()?.getAttribute("aria-pressed")).toBe("true");
+    expect(getPickBar()?.hidden).toBe(false);
+    expect(getPickBar()?.getAttribute("role")).toBe("status");
+    expect(getPickBar()?.textContent).toContain("Tap a tag to add a rule.");
+    expect(work.tags.map((tag) => tag.element.dataset.ao3thPickable)).toEqual(["true", "true"]);
+  });
+
+  it("opens the bottom sheet for a tapped tag in pick mode", () => {
+    const work = createWork();
+    mountTouch(work);
+    getTouchToggle()!.click();
+
+    const click = tapTag(work.tags[0].element);
+
+    expect(click.defaultPrevented).toBe(true);
+    expect(getShadowMenu()?.hidden).toBe(false);
+    expect(getShadowMenu()?.dataset.ao3thLayout).toBe("sheet");
+    expect(getShadowRoot()?.querySelector("[data-ao3th-menu-title]")?.textContent).toContain("Slow Burn");
+    expect(getShadowRoot()?.activeElement).toBe(getMenuOptions()[0]);
+    expect(getShadowRoot()?.querySelector("[data-ao3th-menu-cancel]")?.textContent).toBe("Cancel");
+  });
+
+  it("adds a rule, closes the sheet, and stays in pick mode", async () => {
+    const work = createWork();
+    const addRule = vi.fn(async () => createRule());
+    const options = createOptions({ addRule });
+    mountTouch(work, options);
+    getTouchToggle()!.click();
+    tapTag(work.tags[0].element);
+
+    getMenuOptions().find((option) => option.dataset.action === "hideWork")!.click();
+    await flushAsyncHandlers();
+
+    expect(addRule).toHaveBeenCalledWith({
+      pattern: "Slow Burn",
+      action: "hideWork",
+      matchMode: "exact",
+      category: "freeform",
+      enabled: true,
+      source: "quickAdd",
+    });
+    expect(options.onRuleCreated).toHaveBeenCalledTimes(1);
+    expect(options.showToast).toHaveBeenCalledWith("Rule created: Slow Burn");
+    expect(getShadowMenu()?.hidden).toBe(true);
+    expect(getPickBar()?.hidden).toBe(false);
+    expect(work.tags[0].element.dataset.ao3thPickable).toBe("true");
+  });
+
+  it.each(["cancel", "escape", "outside"])("closes only the sheet on %s", (method) => {
+    const work = createWork();
+    mountTouch(work);
+    getTouchToggle()!.click();
+    tapTag(work.tags[0].element);
+
+    if (method === "cancel") getShadowRoot()!.querySelector<HTMLButtonElement>("[data-ao3th-menu-cancel]")!.click();
+    if (method === "escape") document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    if (method === "outside") {
+      const outside = document.createElement("div");
+      document.body.append(outside);
+      outside.click();
+    }
+
+    expect(getShadowMenu()?.hidden).toBe(true);
+    expect(getPickBar()?.hidden).toBe(false);
+    expect(getTouchToggle()?.hidden).toBe(true);
+    expect(work.tags[0].element.dataset.ao3thPickable).toBe("true");
+  });
+
+  it("leaves pick mode with Done", () => {
+    const work = createWork();
+    mountTouch(work);
+    getTouchToggle()!.click();
+    tapTag(work.tags[0].element);
+
+    getShadowRoot()!.querySelector<HTMLButtonElement>("[data-ao3th-pick-done]")!.click();
+
+    expect(getShadowMenu()?.hidden).toBe(true);
+    expect(getPickBar()?.hidden).toBe(true);
+    expect(getTouchToggle()?.hidden).toBe(false);
+    expect(getTouchToggle()?.getAttribute("aria-pressed")).toBe("false");
+    expect(work.tags[0].element.hasAttribute("data-ao3th-pickable")).toBe(false);
+    expect(tapTag(work.tags[0].element).defaultPrevented).toBe(false);
+  });
+
+  it("keeps pick mode across a plain remount and resets it on request", () => {
+    const work = createWork();
+    mountTouch(work);
+    getTouchToggle()!.click();
+
+    unmountHoverMenu();
+    expect(work.tags[0].element.hasAttribute("data-ao3th-pickable")).toBe(false);
+    mountTouch(work);
+    expect(getPickBar()?.hidden).toBe(false);
+    expect(work.tags[0].element.dataset.ao3thPickable).toBe("true");
+
+    unmountHoverMenu({ resetPickMode: true });
+    mountTouch(work);
+    expect(getPickBar()?.hidden).toBe(true);
+    expect(getTouchToggle()?.hidden).toBe(false);
+  });
+
+  it("resets pick mode when mounted in pointer mode", () => {
+    const work = createWork();
+    mountTouch(work);
+    getTouchToggle()!.click();
+
+    mountHoverMenu([work], createSettings(), { ...createOptions(), inputMode: "pointer" });
+    mountTouch(work);
+
+    expect(getPickBar()?.hidden).toBe(true);
+  });
+
+  it("keeps the sheet open when the page scrolls", () => {
+    const work = createWork();
+    mountTouch(work);
+    getTouchToggle()!.click();
+    tapTag(work.tags[0].element);
+
+    window.dispatchEvent(new Event("scroll"));
+
+    expect(getShadowMenu()?.hidden).toBe(false);
+  });
+
+  it("marks the document root only while mounted in touch mode", () => {
+    const work = createWork();
+    mountTouch(work);
+    expect(document.documentElement.dataset.ao3thTouchUi).toBe("true");
+
+    unmountHoverMenu();
+    expect(document.documentElement.hasAttribute("data-ao3th-touch-ui")).toBe(false);
+
+    mountHoverMenu([work], createSettings(), { ...createOptions(), inputMode: "pointer" });
+    expect(document.documentElement.hasAttribute("data-ao3th-touch-ui")).toBe(false);
+  });
+
+  it("renders nothing and resets pick mode when quick-add is disabled", () => {
+    const work = createWork();
+    mountTouch(work);
+    getTouchToggle()!.click();
+
+    mountTouch(work, createOptions(), createSettings({ hoverButtonEnabled: false }));
+    expect(document.querySelector("#ao3th-hover-host")).toBeNull();
+    expect(document.documentElement.hasAttribute("data-ao3th-touch-ui")).toBe(false);
+
+    mountTouch(work);
+    expect(getPickBar()?.hidden).toBe(true);
+    expect(getTouchToggle()?.hidden).toBe(false);
+  });
+
+  it("shows the existing retry feedback when a touch quick-add fails", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    const work = createWork();
+    const addRule = vi.fn().mockRejectedValueOnce(new Error("Disk unavailable"));
+    mountTouch(work, createOptions({ addRule }));
+    getTouchToggle()!.click();
+    tapTag(work.tags[0].element);
+
+    getMenuOptions()[0].click();
+    await flushAsyncHandlers();
+
+    expect(getShadowMenu()?.hidden).toBe(false);
+    expect(getShadowMenu()?.querySelector("[role=alert]")?.textContent).toContain("try saving again");
+    expect(getMenuOptions()[0].textContent).toContain("Try again");
+    errorLog.mockRestore();
+  });
+});
+
+function getTouchToggle(): HTMLButtonElement | null {
+  return getShadowRoot()?.querySelector<HTMLButtonElement>("[data-ao3th-touch-toggle]") ?? null;
+}
+
+function getPickBar(): HTMLElement | null {
+  return getShadowRoot()?.querySelector<HTMLElement>("[data-ao3th-pick-bar]") ?? null;
+}
+
 function createOptions(overrides: Partial<HoverMenuOptions> = {}): HoverMenuOptions {
   return {
     addRule: vi.fn(async () => createRule()),

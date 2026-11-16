@@ -6,6 +6,11 @@ import type { HitStats, RuntimeMessage } from "../shared/message";
 import { LOG_PREFIX } from "../shared/constants";
 import { getExtensionApi } from "../shared/extensionApi";
 import { setLanguagePreference } from "../shared/i18n";
+import {
+  detectInputMode as defaultDetectInputMode,
+  watchInputMode as defaultWatchInputMode,
+  type QuickAddInputMode,
+} from "../shared/inputMode";
 import { debounce as defaultDebounce } from "../shared/utils";
 import { parseAo3Works as defaultParseAo3Works } from "./ao3Parser";
 import { calculateHitStats as defaultCalculateHitStats } from "./hitStats";
@@ -40,9 +45,11 @@ export interface ContentAppDeps {
   mountHoverMenu(
     works: readonly ParsedWork[],
     settings: Settings,
-    options: Pick<HoverMenuOptions, "onRuleCreated">
+    options: Pick<HoverMenuOptions, "onRuleCreated" | "inputMode">
   ): void;
-  unmountHoverMenu(): void;
+  unmountHoverMenu(options?: { resetPickMode?: boolean }): void;
+  detectInputMode(): QuickAddInputMode;
+  watchInputMode(onChange: (mode: QuickAddInputMode) => void): () => void;
   calculateHitStats(
     matchResult: MatchResult | null,
     totalRules: number,
@@ -107,6 +114,7 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
 
     cachedSettings = await deps.getSettings();
     setLanguagePreference(cachedSettings.languagePreference);
+    safeWatchInputMode();
     if (!cachedSettings.extensionEnabled) return;
 
     cachedRules = await deps.listRules();
@@ -135,7 +143,7 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     if (!cachedSettings.extensionEnabled) {
       safeStopPageObserver();
       safeClearRenderedMatches();
-      safeUnmountHoverMenu();
+      safeUnmountHoverMenu({ resetPickMode: true });
       return;
     }
 
@@ -212,13 +220,18 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
 
   function syncHoverMenu(): void {
     try {
-      if (!cachedSettings?.extensionEnabled || !cachedSettings.hoverButtonEnabled || cachedWorks.length === 0) {
+      if (!cachedSettings?.extensionEnabled || !cachedSettings.hoverButtonEnabled) {
+        safeUnmountHoverMenu({ resetPickMode: true });
+        return;
+      }
+      if (cachedWorks.length === 0) {
         safeUnmountHoverMenu();
         return;
       }
 
       deps.mountHoverMenu(cachedWorks, cachedSettings, {
         onRuleCreated: handleQuickAddRuleCreated,
+        inputMode: deps.detectInputMode(),
       });
     } catch (error) {
       deps.logError(error);
@@ -267,9 +280,17 @@ export async function startContentApp(deps: ContentAppDeps = createRealDeps()): 
     }
   }
 
-  function safeUnmountHoverMenu(): void {
+  function safeWatchInputMode(): void {
     try {
-      deps.unmountHoverMenu();
+      deps.watchInputMode(() => syncHoverMenu());
+    } catch (error) {
+      deps.logError(error);
+    }
+  }
+
+  function safeUnmountHoverMenu(options?: { resetPickMode?: boolean }): void {
+    try {
+      deps.unmountHoverMenu(options);
     } catch (error) {
       deps.logError(error);
     }
@@ -287,6 +308,8 @@ function createRealDeps(): ContentAppDeps {
     clearRenderedMatches: defaultClearRenderedMatches,
     mountHoverMenu: defaultMountHoverMenu,
     unmountHoverMenu: defaultUnmountHoverMenu,
+    detectInputMode: () => defaultDetectInputMode(),
+    watchInputMode: (onChange) => defaultWatchInputMode(onChange),
     calculateHitStats: defaultCalculateHitStats,
     startPageObserver: defaultStartPageObserver,
     stopPageObserver: defaultStopPageObserver,

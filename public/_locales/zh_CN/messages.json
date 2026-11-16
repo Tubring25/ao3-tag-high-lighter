@@ -81,7 +81,19 @@
     "message": "自由标签"
   },
   "popupExtensionEnabledAria": {
-    "message": "启用扩展"
+    "message": "在所有网站启用扩展"
+  },
+  "popupGlobalOn": {
+    "message": "全局 · 开启"
+  },
+  "popupGlobalPaused": {
+    "message": "全局 · 暂停"
+  },
+  "popupQuickAddGlobalPaused": {
+    "message": "随全局暂停"
+  },
+  "popupQuickAddSiteInactive": {
+    "message": "此网站未运行"
   },
   "popupSettingsLoadErrorTitle": {
     "message": "设置没有载入。"
@@ -90,10 +102,10 @@
     "message": "重新打开弹窗，或去规则管理查看。"
   },
   "popupOpenAo3PageTitle": {
-    "message": "先打开 AO3 页面。"
+    "message": "当前页未运行"
   },
   "popupOpenAo3PageBody": {
-    "message": "当前页命中的规则会显示在这里。"
+    "message": "请打开 AO3 页面，或在“管理规则”的“运行网站”中添加自定义网站。"
   },
   "popupAccessRequiredTitle": {
     "message": "未授权访问 AO3。"
@@ -104,29 +116,26 @@
   "popupGrantAccess": {
     "message": "授予权限"
   },
-  "popupAccessGrantedReload": {
-    "message": "已授权，请刷新 AO3 页面。"
+  "popupAccessDenied": {
+    "message": "未获得访问权限，可以重试。"
   },
-  "popupPausedTitle": {
-    "message": "已暂停。"
+  "popupSiteNotAddedTitle": {
+    "message": "尚未在此网站运行"
   },
-  "popupPausedMatchesBody": {
-    "message": "当前页有命中规则。开启后会显示标记。"
+  "popupSiteNotAddedBody": {
+    "message": "$1 尚未添加。如需用于 AO3 页面，请打开“管理规则”，在“运行网站”中添加。"
   },
-  "popupPausedEmptyBody": {
-    "message": "开启后会按规则标记作品。"
+  "popupReloadTitle": {
+    "message": "需要刷新页面"
   },
-  "popupNoMatchesTitle": {
-    "message": "当前页没有命中规则。"
+  "popupReloadBody": {
+    "message": "已有访问权限，但当前页尚未响应。请刷新页面后重试。"
   },
-  "popupNoMatchesBody": {
-    "message": "可以在规则管理里添加，或悬停标签点 +。"
+  "popupReloadPage": {
+    "message": "刷新页面"
   },
-  "popupMatchesTitle": {
-    "message": "当前页命中 $1 项"
-  },
-  "popupStylesActiveBody": {
-    "message": "标记已显示在页面上。"
+  "popupReloadError": {
+    "message": "刷新失败，请使用浏览器刷新页面。"
   },
   "popupStatHighlightTags": {
     "message": "$1标签"
@@ -146,11 +155,17 @@
   "popupTagHoverQuickAddEnabledAria": {
     "message": "启用悬停标签快速添加"
   },
+  "popupTouchQuickAdd": {
+    "message": "标签快速添加"
+  },
+  "popupTouchQuickAddDescription": {
+    "message": "在 AO3 页面右下角显示 + 按钮。"
+  },
+  "popupTouchQuickAddEnabledAria": {
+    "message": "已启用标签快速添加"
+  },
   "popupSaveError": {
     "message": "保存失败，请重试。"
-  },
-  "popupCurrentTab": {
-    "message": "当前标签页"
   },
   "popupAo3WorkPage": {
     "message": "AO3 作品页"
@@ -442,6 +457,18 @@
   },
   "hoverAddRuleFor": {
     "message": "给“$1”添加规则"
+  },
+  "touchQuickAddToggleAria": {
+    "message": "选择标签以添加规则"
+  },
+  "touchPickModeHint": {
+    "message": "点按标签即可添加规则。"
+  },
+  "touchPickModeDone": {
+    "message": "完成"
+  },
+  "touchSheetCancel": {
+    "message": "取消"
   },
   "toastRuleCreated": {
     "message": "已添加规则：$1"

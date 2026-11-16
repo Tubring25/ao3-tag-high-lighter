@@ -2,6 +2,7 @@ import type { MatchResult, ParsedTag, ParsedWork, Rule, Settings } from "../core
 import { calculateHitStats } from "./hitStats";
 import { startContentApp, type ContentAppDeps } from "./contentApp";
 import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
+import type { QuickAddInputMode } from "../shared/inputMode";
 
 describe("startContentApp", () => {
   it("registers the message listener but does not read rules or render when disabled", async () => {
@@ -115,7 +116,60 @@ describe("startContentApp", () => {
     listenerRef.listener?.({ type: "SETTINGS_UPDATED" });
     await flushAsyncHandlers();
 
-    expect(unmountHoverMenu).toHaveBeenCalled();
+    expect(unmountHoverMenu).toHaveBeenCalledWith({ resetPickMode: true });
+  });
+
+  it("passes the detected input mode and remounts with the new mode when it changes", async () => {
+    const work = createWork();
+    const { deps, mountHoverMenu, detectInputMode, watchInputMode } = createDeps({
+      parseAo3Works: vi.fn(() => [work]),
+    });
+
+    await startContentApp(deps);
+    expect(mountHoverMenu).toHaveBeenLastCalledWith(
+      [work],
+      createSettings(),
+      expect.objectContaining({ inputMode: "pointer" })
+    );
+
+    detectInputMode.mockReturnValue("touch");
+    watchInputMode.mock.calls[0][0]("touch");
+
+    expect(mountHoverMenu).toHaveBeenCalledTimes(2);
+    expect(mountHoverMenu).toHaveBeenLastCalledWith(
+      [work],
+      createSettings(),
+      expect.objectContaining({ inputMode: "touch" })
+    );
+  });
+
+  it("keeps rendering when input mode watching fails", async () => {
+    const { deps, logError, renderMatches } = createDeps({
+      watchInputMode: vi.fn(() => {
+        throw new Error("matchMedia failed");
+      }),
+    });
+
+    await startContentApp(deps);
+
+    expect(logError).toHaveBeenCalledWith(expect.objectContaining({ message: "matchMedia failed" }));
+    expect(renderMatches).toHaveBeenCalled();
+  });
+
+  it("resets touch pick mode when SETTINGS_UPDATED pauses the extension", async () => {
+    const listenerRef = createListenerRef();
+    const { deps, getSettings, unmountHoverMenu } = createDeps({
+      addMessageListener: listenerRef.addMessageListener,
+    });
+    getSettings
+      .mockResolvedValueOnce(createSettings())
+      .mockResolvedValueOnce(createSettings({ extensionEnabled: false }));
+
+    await startContentApp(deps);
+    listenerRef.listener?.({ type: "SETTINGS_UPDATED" });
+    await flushAsyncHandlers();
+
+    expect(unmountHoverMenu).toHaveBeenLastCalledWith({ resetPickMode: true });
   });
 
   it("refreshes rules and rerenders after a quick-add rule is created", async () => {
@@ -451,6 +505,8 @@ function createDeps(overrides: Partial<ContentAppDeps> = {}) {
   const logError = vi.fn();
   const mountHoverMenu = vi.fn();
   const unmountHoverMenu = vi.fn();
+  const detectInputMode = vi.fn((): QuickAddInputMode => "pointer");
+  const watchInputMode = vi.fn((_onChange: (mode: QuickAddInputMode) => void) => () => {});
   const calculateStats = vi.fn(calculateHitStats);
   const startPageObserver = vi.fn();
   const stopPageObserver = vi.fn();
@@ -468,6 +524,8 @@ function createDeps(overrides: Partial<ContentAppDeps> = {}) {
     logError,
     mountHoverMenu,
     unmountHoverMenu,
+    detectInputMode,
+    watchInputMode,
     calculateHitStats: calculateStats,
     startPageObserver,
     stopPageObserver,
@@ -487,6 +545,8 @@ function createDeps(overrides: Partial<ContentAppDeps> = {}) {
     logError: deps.logError as typeof logError,
     mountHoverMenu: deps.mountHoverMenu as typeof mountHoverMenu,
     unmountHoverMenu: deps.unmountHoverMenu as typeof unmountHoverMenu,
+    detectInputMode: deps.detectInputMode as typeof detectInputMode,
+    watchInputMode: deps.watchInputMode as typeof watchInputMode,
     startPageObserver: deps.startPageObserver as typeof startPageObserver,
     stopPageObserver: deps.stopPageObserver as typeof stopPageObserver,
     debounce: deps.debounce as typeof debounce,

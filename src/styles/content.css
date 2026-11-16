@@ -13,6 +13,7 @@
   --ao3th-toast-bg: #1f2937;
   --ao3th-toast-text: #ffffff;
   --ao3th-toast-shadow: rgba(17, 24, 39, 0.22);
+  --ao3th-pick-outline: #990000;
 }
 
 /* Dark AO3 site skins (e.g. Reversi); set by pageSurface.ts. */
@@ -31,6 +32,7 @@
   --ao3th-toast-bg: #111827;
   --ao3th-toast-text: #ffffff;
   --ao3th-toast-shadow: rgba(0, 0, 0, 0.5);
+  --ao3th-pick-outline: #f87171;
 }
 
 [data-ao3th-action="highlight"] {
@@ -247,4 +249,16 @@ li.work.blurb[data-ao3th-hidden="collapse"][data-ao3th-expanded="true"]
   box-shadow: 0 10px 24px var(--ao3th-toast-shadow) !important;
   font: 13px/1.35 "Funnel Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif !important;
   pointer-events: none !important;
+}
+
+[data-ao3th-pickable="true"] {
+  outline: 2px dashed var(--ao3th-pick-outline) !important;
+  outline-offset: 1px !important;
+}
+
+:root[data-ao3th-touch-ui="true"] .ao3th-toast-container {
+  left: 12px !important;
+  right: 12px !important;
+  bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+  align-items: center !important;
 }

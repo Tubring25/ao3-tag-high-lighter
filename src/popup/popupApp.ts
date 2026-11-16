@@ -3,6 +3,7 @@ import { DEFAULT_ACTION_STYLES } from "../core/actionStyles";
 import { AO3_ORIGIN_PATTERN, LOG_PREFIX } from "../shared/constants";
 import { isAo3Host } from "../shared/customHosts";
 import { getExtensionApi } from "../shared/extensionApi";
+import { detectInputMode, type QuickAddInputMode } from "../shared/inputMode";
 import { applyDocumentLanguage, getLocalizedActionLabel, setLanguagePreference, t } from "../shared/i18n";
 import type { HitStats, RuntimeMessage } from "../shared/message";
 import {
@@ -17,8 +18,10 @@ export interface PopupAppDeps {
   sendMessageToTab(tabId: number, message: RuntimeMessage): Promise<unknown>;
   openOptionsPage(): void;
   closePopup(): void;
-  hasAo3Access(): Promise<boolean>;
+  hasSiteAccess(url: string): Promise<boolean>;
   requestAo3Access(): Promise<boolean>;
+  reloadTab(tabId: number): Promise<void>;
+  detectInputMode(): QuickAddInputMode;
   logError(error: unknown): void;
 }
 
@@ -31,6 +34,7 @@ interface ChromeLike {
   tabs?: {
     query(queryInfo: { active: boolean; currentWindow: boolean }): Promise<CurrentTab[]>;
     sendMessage(tabId: number, message: RuntimeMessage): Promise<unknown>;
+    reload(tabId: number): Promise<void>;
   };
   runtime?: {
     openOptionsPage(): void;
@@ -49,49 +53,207 @@ const EMPTY_STATS: HitStats = {
 };
 
 type ToggleSettingKey = "extensionEnabled" | "hoverButtonEnabled";
+type PageState = "active" | "access" | "unadded" | "refresh" | "unavailable" | "error";
+interface ToggleCallbacks {
+  onSaveStart?: () => void;
+  onSaveSuccess?: (enabled: boolean) => void | Promise<void>;
+  onSaveEnd?: () => void;
+}
 
 export async function renderPopupApp(
   container: HTMLElement,
   deps: PopupAppDeps = createRealDeps()
 ): Promise<void> {
   container.textContent = "";
-  container.appendChild(createShell());
-
-  const shell = container.querySelector<HTMLElement>("[data-popup-shell]");
-  if (!shell) return;
+  const shell = document.createElement("main");
+  shell.className = "popup-shell";
+  shell.dataset.popupShell = "true";
+  container.appendChild(shell);
 
   const currentTab = await getCurrentTabSafely(deps);
+  const inputMode = deps.detectInputMode();
   let settings: Settings;
-
+  let settingsLoaded = true;
   try {
     settings = await deps.getSettings();
-    setLanguagePreference(settings.languagePreference);
-    applyDocumentLanguage();
   } catch (error) {
     deps.logError(error);
     settings = createFallbackSettings();
-    setLanguagePreference(settings.languagePreference);
-    applyDocumentLanguage();
-    const pageLabel = getPageLabel(currentTab);
-    renderHeader(shell, settings, null, deps, pageLabel);
-    renderErrorNotice(shell);
-    renderActions(shell, settings, deps);
-    return;
+    settingsLoaded = false;
   }
+  setLanguagePreference(settings.languagePreference);
+  applyDocumentLanguage();
 
-  const pageLabel = getPageLabel(currentTab);
-  const [stats, hasAo3Access] = await Promise.all([
-    getCurrentPageStats(deps, currentTab),
-    hasAo3AccessSafely(deps),
-  ]);
+  let stats = settingsLoaded ? await getCurrentPageStats(deps, currentTab) : null;
+  let pageState: PageState = settingsLoaded ? await getPageState(deps, currentTab, stats) : "error";
+  let globalSaving = false;
+  let hoverSaving = false;
 
-  renderHeader(shell, settings, stats, deps, pageLabel);
-  // A responding content script proves this page is covered, even when the wildcard check says no
-  // (Chromium answers false if the user granted only archiveofourown.org itself).
-  if (!hasAo3Access && !stats) renderAccessNotice(shell, deps);
-  renderPageStatus(shell, settings, stats);
-  renderStats(shell, stats, !settings.extensionEnabled, settings);
-  renderActions(shell, settings, deps);
+  const syncUi = (): void => {
+    const enabled = settings.extensionEnabled;
+    // The page state survives global pause; only its presentation is suppressed.
+    notice.hidden = pageState !== "error" && (!enabled || pageState === "active");
+    shell.dataset.pageState = pageState;
+    shell.dataset.globalPaused = String(!enabled);
+    statsSection.hidden = !stats;
+    statsSection.dataset.state = enabled ? "active" : "paused";
+    const hasNoticeAction = !notice.hidden && (pageState === "access" || pageState === "refresh");
+    manageButton.classList.toggle("popup-button-primary", !hasNoticeAction);
+
+    const running = enabled && pageState === "active";
+    hoverToggle.checked = running && settings.hoverButtonEnabled;
+    hoverToggle.disabled = !settingsLoaded || !running || globalSaving || hoverSaving;
+    hoverSetting.dataset.dimmed = String(!running);
+    hoverStatus.textContent = !enabled
+      ? t("popupQuickAddGlobalPaused")
+      : pageState !== "active"
+        ? t("popupQuickAddSiteInactive")
+        : getOnOffLabel(settings.hoverButtonEnabled);
+    hoverDescription.hidden = !running;
+    globalToggle.disabled = !settingsLoaded || globalSaving || hoverSaving;
+  };
+
+  const globalControl = renderHeader(shell, settings, getPageLabel(currentTab));
+  const globalToggle = globalControl.toggle;
+  const notice = document.createElement("section");
+  notice.className = "popup-notice";
+  notice.dataset.popupNotice = "true";
+  notice.setAttribute("aria-live", "polite");
+  shell.appendChild(notice);
+
+  const updateNotice = (): void => {
+    notice.textContent = "";
+    notice.dataset.notice = pageState;
+    delete notice.dataset.popupAccessNotice;
+    if (pageState === "active") return;
+    const title = document.createElement("h2");
+    title.className = "popup-notice-title";
+    const body = document.createElement("p");
+    body.className = "popup-notice-body";
+    const copy = {
+      access: [t("popupAccessRequiredTitle"), t("popupAccessRequiredBody")],
+      unadded: [t("popupSiteNotAddedTitle"), t("popupSiteNotAddedBody", [getPageLabel(currentTab) ?? ""])],
+      refresh: [t("popupReloadTitle"), t("popupReloadBody")],
+      unavailable: [t("popupOpenAo3PageTitle"), t("popupOpenAo3PageBody")],
+      error: [t("popupSettingsLoadErrorTitle"), t("popupSettingsLoadErrorBody")],
+    }[pageState];
+    title.textContent = copy[0];
+    body.textContent = copy[1];
+    notice.append(title, body);
+
+    const feedback = document.createElement("p");
+    feedback.className = "popup-notice-feedback";
+    feedback.setAttribute("role", "alert");
+    feedback.hidden = true;
+    const showError = (text: string): void => {
+      feedback.textContent = text;
+      feedback.hidden = false;
+    };
+
+    if (pageState === "access") {
+      notice.dataset.popupAccessNotice = "true";
+      const grantButton = createButton(t("popupGrantAccess"), true);
+      grantButton.classList.add("popup-notice-action");
+      grantButton.dataset.popupGrantAccess = "true";
+      grantButton.addEventListener("click", () => {
+        // Firefox requires the permission request to start inside the user gesture.
+        let request: Promise<boolean>;
+        try {
+          request = deps.requestAo3Access();
+        } catch (error) {
+          deps.logError(error);
+          showError(t("popupAccessDenied"));
+          return;
+        }
+        const restoreFocus = document.activeElement === grantButton;
+        grantButton.disabled = true;
+        feedback.hidden = true;
+        void request.catch((error: unknown) => {
+          deps.logError(error);
+          return false;
+        }).then((granted) => {
+          if (!granted) {
+            grantButton.disabled = false;
+            showError(t("popupAccessDenied"));
+            return;
+          }
+          pageState = "refresh";
+          updateNotice();
+          syncUi();
+          if (restoreFocus) notice.querySelector<HTMLButtonElement>("[data-popup-reload]")?.focus();
+        });
+      });
+      notice.appendChild(grantButton);
+    } else if (pageState === "refresh" && currentTab?.id != null) {
+      const reloadButton = createButton(t("popupReloadPage"), true);
+      reloadButton.classList.add("popup-notice-action");
+      reloadButton.dataset.popupReload = "true";
+      reloadButton.addEventListener("click", () => {
+        reloadButton.disabled = true;
+        feedback.hidden = true;
+        void deps.reloadTab(currentTab.id!).then(() => deps.closePopup()).catch((error: unknown) => {
+          deps.logError(error);
+          reloadButton.disabled = false;
+          showError(t("popupReloadError"));
+        });
+      });
+      notice.appendChild(reloadButton);
+    }
+    notice.appendChild(feedback);
+  };
+
+  const statsSection = document.createElement("section");
+  statsSection.className = "popup-stats";
+  const updateStats = (): void => {
+    statsSection.textContent = "";
+    if (stats) renderStats(statsSection, stats, settings);
+  };
+  shell.appendChild(statsSection);
+
+  const actions = document.createElement("section");
+  actions.className = "popup-actions";
+  const manageButton = createButton(t("popupManageRules"), true);
+  manageButton.dataset.popupOptions = "true";
+  manageButton.addEventListener("click", () => {
+    deps.openOptionsPage();
+    deps.closePopup();
+  });
+  const hoverSetting = createHoverButtonSetting(settings, inputMode);
+  const hoverToggle = hoverSetting.querySelector<HTMLInputElement>("[data-popup-hover-toggle]")!;
+  const hoverStatus = hoverSetting.querySelector<HTMLElement>("[data-popup-hover-status]")!;
+  const hoverDescription = hoverSetting.querySelector<HTMLElement>(".popup-setting-description")!;
+  const hoverSaveStatus = hoverSetting.querySelector<HTMLElement>("[data-popup-hover-save-status]")!;
+  actions.append(manageButton, hoverSetting);
+  shell.appendChild(actions);
+
+  attachSettingToggle(globalToggle, "extensionEnabled", globalControl.status, globalControl.saveStatus, deps,
+    getExtensionStateLabel, {
+      onSaveStart: () => { globalSaving = true; syncUi(); },
+      onSaveSuccess: async (enabled) => {
+        settings.extensionEnabled = enabled;
+        syncUi();
+        if (enabled) {
+          stats = await getCurrentPageStats(deps, currentTab);
+          const nextPageState = await getPageState(deps, currentTab, stats);
+          // Permission recovery can succeed while the original tab snapshot has
+          // no URL. Keep that confirmed reload state until the page responds.
+          if (nextPageState !== "unavailable" || pageState !== "refresh" || currentTab?.url) {
+            pageState = nextPageState;
+          }
+          updateNotice();
+          updateStats();
+        }
+      },
+      onSaveEnd: () => { globalSaving = false; syncUi(); },
+    });
+  attachSettingToggle(hoverToggle, "hoverButtonEnabled", hoverStatus, hoverSaveStatus, deps, getOnOffLabel, {
+    onSaveStart: () => { hoverSaving = true; syncUi(); },
+    onSaveSuccess: (enabled) => { settings.hoverButtonEnabled = enabled; },
+    onSaveEnd: () => { hoverSaving = false; syncUi(); },
+  });
+  updateNotice();
+  updateStats();
+  syncUi();
 }
 
 async function getCurrentTabSafely(deps: PopupAppDeps): Promise<CurrentTab | null> {
@@ -103,12 +265,8 @@ async function getCurrentTabSafely(deps: PopupAppDeps): Promise<CurrentTab | nul
   }
 }
 
-async function getCurrentPageStats(
-  deps: PopupAppDeps,
-  currentTab: CurrentTab | null
-): Promise<HitStats | null> {
+async function getCurrentPageStats(deps: PopupAppDeps, currentTab: CurrentTab | null): Promise<HitStats | null> {
   if (currentTab?.id == null) return null;
-
   try {
     const response = await deps.sendMessageToTab(currentTab.id, { type: "GET_HIT_STATS" });
     return isHitStats(response) ? response : null;
@@ -117,308 +275,140 @@ async function getCurrentPageStats(
   }
 }
 
-async function hasAo3AccessSafely(deps: PopupAppDeps): Promise<boolean> {
+async function getPageState(deps: PopupAppDeps, tab: CurrentTab | null, stats: HitStats | null): Promise<PageState> {
+  // A responding script proves coverage, including site-only grants on Chromium.
+  if (stats) return "active";
+  if (tab?.id == null) return "unavailable";
+  let url: URL | null;
   try {
-    return await deps.hasAo3Access();
+    url = tab.url ? new URL(tab.url) : null;
+  } catch {
+    return "unavailable";
+  }
+  if (url && url.protocol !== "https:") return "unavailable";
+  try {
+    // Without tabs/activeTab, an ungranted site's URL may be hidden. Still offer
+    // the existing global AO3 permission recovery if official access is off.
+    const allowed = await deps.hasSiteAccess(url?.href ?? "https://archiveofourown.org/");
+    if (!url) return allowed ? "unavailable" : "access";
+    if (allowed) return "refresh";
   } catch (error) {
     deps.logError(error);
-    return true;
+    return "unavailable";
   }
+  return isAo3Host(url.hostname) ? "access" : "unadded";
 }
 
-function createShell(): HTMLElement {
-  const shell = document.createElement("main");
-  shell.className = "popup-shell";
-  shell.dataset.popupShell = "true";
-  return shell;
-}
-
-function renderHeader(
-  container: HTMLElement,
-  settings: Settings,
-  stats: HitStats | null,
-  deps: PopupAppDeps,
-  pageLabelText: string
-): void {
+function renderHeader(container: HTMLElement, settings: Settings, pageLabelText: string | null): {
+  toggle: HTMLInputElement; status: HTMLElement; saveStatus: HTMLElement;
+} {
   const header = document.createElement("header");
   header.className = "popup-header";
-
   const brand = document.createElement("div");
   brand.className = "popup-brand";
-
   const title = document.createElement("h1");
   title.className = "popup-title";
   title.textContent = t("extensionName");
-
-  const pageLabel = document.createElement("p");
-  pageLabel.className = "popup-page-label";
-  pageLabel.textContent = pageLabelText;
-
-  brand.append(title, pageLabel);
+  brand.appendChild(title);
+  if (pageLabelText) {
+    const pageLabel = document.createElement("p");
+    pageLabel.className = "popup-page-label";
+    pageLabel.textContent = pageLabelText;
+    brand.appendChild(pageLabel);
+  }
 
   const control = document.createElement("div");
   control.className = "popup-header-control";
-
   const switchLabel = document.createElement("label");
   switchLabel.className = "popup-switch";
-  switchLabel.setAttribute("aria-label", t("popupExtensionEnabledAria"));
-
   const status = document.createElement("span");
   status.className = "popup-switch-state";
   status.dataset.popupGlobalStatus = "true";
   status.textContent = getExtensionStateLabel(settings.extensionEnabled);
-
   const saveStatus = document.createElement("span");
   saveStatus.className = "popup-save-status";
   saveStatus.dataset.popupGlobalSaveStatus = "true";
   saveStatus.setAttribute("aria-live", "polite");
-
   const toggle = document.createElement("input");
   toggle.type = "checkbox";
   toggle.checked = settings.extensionEnabled;
   toggle.dataset.popupToggle = "true";
   toggle.setAttribute("aria-label", t("popupExtensionEnabledAria"));
-  attachSettingToggle(toggle, "extensionEnabled", status, saveStatus, deps, getExtensionStateLabel, {
-    onSaveSuccess: (enabled) => {
-      const notice = container.querySelector<HTMLElement>("[data-popup-notice]");
-      if (notice) applyPageStatus(notice, enabled, stats);
-      const statsSection = container.querySelector<HTMLElement>(".popup-stats");
-      if (statsSection) {
-        if (enabled) {
-          delete statsSection.dataset.state;
-        } else {
-          statsSection.dataset.state = "paused";
-        }
-      }
-      syncPausedControls(container, enabled);
-    },
-  });
-
-  const switchTrack = document.createElement("span");
-  switchTrack.className = "popup-switch-track";
-
-  const switchKnob = document.createElement("span");
-  switchKnob.className = "popup-switch-knob";
-
-  switchTrack.appendChild(switchKnob);
-  switchLabel.append(toggle, switchTrack);
+  switchLabel.append(toggle, createSwitchTrack());
   control.append(switchLabel, status, saveStatus);
   header.append(brand, control);
   container.appendChild(header);
+  return { toggle, status, saveStatus };
 }
 
-function renderPageStatus(
-  container: HTMLElement,
-  settings: Settings,
-  stats: HitStats | null
-): void {
-  const notice = document.createElement("section");
-  notice.className = "popup-notice";
-  notice.dataset.popupNotice = "true";
-
-  const title = document.createElement("h2");
-  title.className = "popup-notice-title";
-
-  const body = document.createElement("p");
-  body.className = "popup-notice-body";
-
-  notice.append(title, body);
-  applyPageStatus(notice, settings.extensionEnabled, stats);
-  container.appendChild(notice);
-}
-
-function renderAccessNotice(container: HTMLElement, deps: PopupAppDeps): void {
-  const notice = document.createElement("section");
-  notice.className = "popup-notice";
-  notice.dataset.popupAccessNotice = "true";
-  notice.dataset.notice = "access";
-
-  const title = document.createElement("h2");
-  title.className = "popup-notice-title";
-  title.textContent = t("popupAccessRequiredTitle");
-
-  const body = document.createElement("p");
-  body.className = "popup-notice-body";
-  body.textContent = t("popupAccessRequiredBody");
-
-  const grantButton = document.createElement("button");
-  grantButton.type = "button";
-  grantButton.className = "popup-button popup-button-primary popup-notice-action";
-  grantButton.dataset.popupGrantAccess = "true";
-  grantButton.textContent = t("popupGrantAccess");
-  grantButton.addEventListener("click", () => {
-    // Firefox only allows permission requests inside the user gesture, so call before any await.
-    const request = deps.requestAo3Access();
-    grantButton.disabled = true;
-    void request
-      .catch((error: unknown) => {
-        deps.logError(error);
-        return false;
-      })
-      .then((granted) => {
-        if (!granted) {
-          grantButton.disabled = false;
-          return;
-        }
-        notice.dataset.notice = "granted";
-        title.textContent = t("popupAccessGrantedReload");
-        body.remove();
-        grantButton.remove();
-      });
-  });
-
-  notice.append(title, body, grantButton);
-  container.appendChild(notice);
-}
-
-function renderErrorNotice(container: HTMLElement): void {
-  const notice = document.createElement("section");
-  notice.className = "popup-notice";
-  notice.dataset.popupNotice = "true";
-  notice.dataset.notice = "error";
-
-  const title = document.createElement("h2");
-  title.className = "popup-notice-title";
-  title.textContent = t("popupSettingsLoadErrorTitle");
-
-  const body = document.createElement("p");
-  body.className = "popup-notice-body";
-  body.textContent = t("popupSettingsLoadErrorBody");
-
-  notice.append(title, body);
-  container.appendChild(notice);
-}
-
-function applyPageStatus(notice: HTMLElement, extensionEnabled: boolean, stats: HitStats | null): void {
-  const title = notice.querySelector<HTMLElement>(".popup-notice-title");
-  const body = notice.querySelector<HTMLElement>(".popup-notice-body");
-  if (!title || !body) return;
-
-  if (!stats) {
-    notice.dataset.notice = "unavailable";
-    title.textContent = t("popupOpenAo3PageTitle");
-    body.textContent = t("popupOpenAo3PageBody");
-  } else if (!extensionEnabled) {
-    notice.dataset.notice = "paused";
-    title.textContent = t("popupPausedTitle");
-    body.textContent =
-      getVisibleMatchCount(stats) > 0
-        ? t("popupPausedMatchesBody")
-        : t("popupPausedEmptyBody");
-  } else if (getVisibleMatchCount(stats) === 0) {
-    notice.dataset.notice = "empty";
-    title.textContent = t("popupNoMatchesTitle");
-    body.textContent = t("popupNoMatchesBody");
-  } else {
-    notice.dataset.notice = "active";
-    title.textContent = t("popupMatchesTitle", [getVisibleMatchCount(stats)]);
-    body.textContent = t("popupStylesActiveBody");
-  }
-}
-
-function renderStats(
-  container: HTMLElement,
-  stats: HitStats | null,
-  paused: boolean,
-  settings: Settings
-): void {
-  if (!stats) return;
-
-  const section = document.createElement("section");
-  section.className = "popup-stats";
-  if (paused) section.dataset.state = "paused";
-
+function renderStats(container: HTMLElement, stats: HitStats, settings: Settings): void {
   const rows: Array<[string, string, number]> = [
     [t("popupStatHighlightTags", [getLocalizedActionLabel("highlight", settings.actionStyles)]), "highlight", stats.highlight],
     [getLocalizedActionLabel("warn", settings.actionStyles), "warn", stats.warn],
     [t("popupStatCollapseWork"), "hideWork", stats.hideWork],
   ];
-
   for (const [label, key, count] of rows) {
     const row = document.createElement("div");
     row.className = "popup-stat-row";
     row.dataset.stat = key;
-    row.append(createStatLabel(label), createStatValue(count));
-    section.appendChild(row);
+    const labelElement = document.createElement("span");
+    labelElement.className = "popup-stat-label";
+    labelElement.textContent = label;
+    const value = document.createElement("strong");
+    value.className = "popup-stat-value";
+    value.textContent = String(count);
+    row.append(labelElement, value);
+    container.appendChild(row);
   }
-
-  container.appendChild(section);
 }
 
-function renderActions(container: HTMLElement, settings: Settings, deps: PopupAppDeps): void {
-  const actions = document.createElement("section");
-  actions.className = "popup-actions";
-
-  const manageButton = document.createElement("button");
-  manageButton.type = "button";
-  manageButton.className = "popup-button popup-button-primary";
-  manageButton.dataset.popupOptions = "true";
-  if (!settings.extensionEnabled) manageButton.dataset.state = "paused";
-  manageButton.textContent = t("popupManageRules");
-  manageButton.addEventListener("click", () => {
-    deps.openOptionsPage();
-    deps.closePopup();
-  });
-
-  const hoverSetting = createHoverButtonSetting(settings, deps);
-
-  actions.append(manageButton, hoverSetting);
-  container.appendChild(actions);
-}
-
-function createHoverButtonSetting(settings: Settings, deps: PopupAppDeps): HTMLElement {
+function createHoverButtonSetting(settings: Settings, inputMode: QuickAddInputMode): HTMLElement {
+  const touch = inputMode === "touch";
   const wrapper = document.createElement("label");
   wrapper.className = "popup-setting-row";
-
   const copy = document.createElement("span");
   copy.className = "popup-setting-copy";
-
   const title = document.createElement("span");
   title.className = "popup-setting-title";
-  title.textContent = t("popupTagHoverQuickAdd");
-
+  title.textContent = touch ? t("popupTouchQuickAdd") : t("popupTagHoverQuickAdd");
   const description = document.createElement("span");
   description.className = "popup-setting-description";
-  description.textContent = t("popupTagHoverQuickAddDescription");
-
+  description.textContent = touch ? t("popupTouchQuickAddDescription") : t("popupTagHoverQuickAddDescription");
   const statusRow = document.createElement("span");
   statusRow.className = "popup-setting-status-row";
-
   const status = document.createElement("span");
   status.className = "popup-setting-status";
   status.dataset.popupHoverStatus = "true";
-  status.textContent = getOnOffLabel(settings.extensionEnabled && settings.hoverButtonEnabled);
-
   const saveStatus = document.createElement("span");
   saveStatus.className = "popup-save-status";
   saveStatus.dataset.popupHoverSaveStatus = "true";
   saveStatus.setAttribute("aria-live", "polite");
-
   statusRow.append(status, saveStatus);
   copy.append(title, description, statusRow);
-
   const toggle = document.createElement("input");
   toggle.type = "checkbox";
-  toggle.checked = settings.extensionEnabled && settings.hoverButtonEnabled;
-  toggle.disabled = !settings.extensionEnabled;
+  toggle.checked = settings.hoverButtonEnabled;
   toggle.dataset.popupHoverToggle = "true";
-  toggle.dataset.popupPreferredChecked = String(settings.hoverButtonEnabled);
-  toggle.setAttribute("aria-label", t("popupTagHoverQuickAddEnabledAria"));
-  attachSettingToggle(toggle, "hoverButtonEnabled", status, saveStatus, deps, getOnOffLabel, {
-    onSaveSuccess: (enabled) => {
-      toggle.dataset.popupPreferredChecked = String(enabled);
-    },
-  });
-
-  const switchTrack = document.createElement("span");
-  switchTrack.className = "popup-switch-track";
-
-  const switchKnob = document.createElement("span");
-  switchKnob.className = "popup-switch-knob";
-
-  switchTrack.appendChild(switchKnob);
-  wrapper.append(copy, toggle, switchTrack);
+  toggle.setAttribute("aria-label", touch ? t("popupTouchQuickAddEnabledAria") : t("popupTagHoverQuickAddEnabledAria"));
+  wrapper.append(copy, toggle, createSwitchTrack());
   return wrapper;
+}
+
+function createButton(text: string, primary = false): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = primary ? "popup-button popup-button-primary" : "popup-button";
+  button.textContent = text;
+  return button;
+}
+
+function createSwitchTrack(): HTMLElement {
+  const track = document.createElement("span");
+  track.className = "popup-switch-track";
+  const knob = document.createElement("span");
+  knob.className = "popup-switch-knob";
+  track.appendChild(knob);
+  return track;
 }
 
 function attachSettingToggle(
@@ -428,18 +418,10 @@ function attachSettingToggle(
   saveStatusElement: HTMLElement,
   deps: PopupAppDeps,
   getStateLabel: (enabled: boolean) => string,
-  options: { onSaveSuccess?: (enabled: boolean) => void } = {}
+  options: ToggleCallbacks = {}
 ): void {
   toggle.addEventListener("change", () => {
-    void saveToggleSetting(
-      toggle,
-      settingKey,
-      stateElement,
-      saveStatusElement,
-      deps,
-      getStateLabel,
-      options
-    );
+    void saveToggleSetting(toggle, settingKey, stateElement, saveStatusElement, deps, getStateLabel, options);
   });
 }
 
@@ -450,105 +432,52 @@ async function saveToggleSetting(
   saveStatusElement: HTMLElement,
   deps: PopupAppDeps,
   getStateLabel: (enabled: boolean) => string,
-  options: { onSaveSuccess?: (enabled: boolean) => void } = {}
+  options: ToggleCallbacks
 ): Promise<void> {
   const previousChecked = !toggle.checked;
   const nextChecked = toggle.checked;
-
+  const hadFocus = document.activeElement === toggle;
   toggle.disabled = true;
   stateElement.textContent = getStateLabel(nextChecked);
-  clearSaveStatus(saveStatusElement);
-
+  saveStatusElement.textContent = "";
+  delete saveStatusElement.dataset.status;
+  options.onSaveStart?.();
   try {
-    const patch: Partial<Settings> = { [settingKey]: nextChecked };
-    await deps.saveSettings(patch);
-    stateElement.textContent = getStateLabel(nextChecked);
-    clearSaveStatus(saveStatusElement);
-    options.onSaveSuccess?.(nextChecked);
+    await deps.saveSettings({ [settingKey]: nextChecked });
+    await options.onSaveSuccess?.(nextChecked);
   } catch (error) {
     toggle.checked = previousChecked;
     stateElement.textContent = getStateLabel(previousChecked);
-    setSaveStatus(saveStatusElement, t("popupSaveError"), "error");
+    saveStatusElement.textContent = t("popupSaveError");
+    saveStatusElement.dataset.status = "error";
     deps.logError(error);
   } finally {
     toggle.disabled = false;
+    options.onSaveEnd?.();
+    if (hadFocus && !toggle.disabled && document.activeElement === document.body) {
+      toggle.focus({ preventScroll: true });
+    }
   }
 }
 
-function setSaveStatus(element: HTMLElement, text: string, status: "error"): void {
-  element.textContent = text;
-  element.dataset.status = status;
-}
-
-function clearSaveStatus(element: HTMLElement): void {
-  element.textContent = "";
-  delete element.dataset.status;
-}
-
 function getExtensionStateLabel(enabled: boolean): string {
-  return enabled ? t("labelOn") : t("labelPaused");
+  return enabled ? t("popupGlobalOn") : t("popupGlobalPaused");
 }
 
 function getOnOffLabel(enabled: boolean): string {
   return enabled ? t("labelOn") : t("labelOff");
 }
 
-function createStatLabel(label: string): HTMLElement {
-  const element = document.createElement("span");
-  element.className = "popup-stat-label";
-  element.textContent = label;
-  return element;
-}
-
-function createStatValue(count: number): HTMLElement {
-  const element = document.createElement("strong");
-  element.className = "popup-stat-value";
-  element.textContent = String(count);
-  return element;
-}
-
-function getVisibleMatchCount(stats: HitStats): number {
-  return stats.highlight + stats.warn + stats.hideWork;
-}
-
-function syncPausedControls(container: HTMLElement, extensionEnabled: boolean): void {
-  const manageButton = container.querySelector<HTMLElement>("[data-popup-options]");
-  if (manageButton) {
-    if (extensionEnabled) {
-      delete manageButton.dataset.state;
-    } else {
-      manageButton.dataset.state = "paused";
-    }
-  }
-
-  const hoverToggle = container.querySelector<HTMLInputElement>("[data-popup-hover-toggle]");
-  const hoverStatus = container.querySelector<HTMLElement>("[data-popup-hover-status]");
-  if (!hoverToggle) return;
-
-  const preferredChecked = hoverToggle.dataset.popupPreferredChecked === "true";
-  if (extensionEnabled) {
-    hoverToggle.disabled = false;
-    hoverToggle.checked = preferredChecked;
-    if (hoverStatus) hoverStatus.textContent = getOnOffLabel(preferredChecked);
-    return;
-  }
-
-  hoverToggle.checked = false;
-  hoverToggle.disabled = true;
-  if (hoverStatus) hoverStatus.textContent = getOnOffLabel(false);
-}
-
-function getPageLabel(tab: CurrentTab | null): string {
-  if (!tab?.url) return t("popupCurrentTab");
-
+function getPageLabel(tab: CurrentTab | null): string | null {
+  if (!tab?.url) return null;
   try {
     const url = new URL(tab.url);
     if (isAo3Host(url.hostname)) {
       return /^\/works\/\d+(?:\/|$)/.test(url.pathname) ? t("popupAo3WorkPage") : t("popupAo3Page");
     }
-    return url.hostname;
+    return url.hostname || null;
   } catch {
-    return t("popupCurrentTab");
+    return null;
   }
 }
 
@@ -576,45 +505,36 @@ function createRealDeps(): PopupAppDeps {
     },
     sendMessageToTab: async (tabId, message) => {
       const tabsApi = getExtensionApi<ChromeLike>().tabs;
-      if (!tabsApi) {
-        throw new Error("Extension tabs API is unavailable");
-      }
+      if (!tabsApi) throw new Error("Extension tabs API is unavailable");
       return tabsApi.sendMessage(tabId, message);
     },
-    openOptionsPage: () => {
-      getExtensionApi<ChromeLike>().runtime?.openOptionsPage();
-    },
-    closePopup: () => {
-      window.close();
-    },
-    hasAo3Access: async () => {
+    openOptionsPage: () => { getExtensionApi<ChromeLike>().runtime?.openOptionsPage(); },
+    closePopup: () => { window.close(); },
+    hasSiteAccess: async (url) => {
       const permissionsApi = getExtensionApi<ChromeLike>().permissions;
-      if (!permissionsApi) return true;
-      return permissionsApi.contains({ origins: [AO3_ORIGIN_PATTERN] });
+      if (!permissionsApi) throw new Error("Extension permissions API is unavailable");
+      return permissionsApi.contains({ origins: [`${new URL(url).origin}/*`] });
     },
     requestAo3Access: async () => {
       const permissionsApi = getExtensionApi<ChromeLike>().permissions;
       if (!permissionsApi) return false;
       return permissionsApi.request({ origins: [AO3_ORIGIN_PATTERN] });
     },
-    logError: (error) => {
-      console.error(`${LOG_PREFIX} Popup error:`, error);
+    reloadTab: async (tabId) => {
+      const tabsApi = getExtensionApi<ChromeLike>().tabs;
+      if (!tabsApi) throw new Error("Extension tabs API is unavailable");
+      await tabsApi.reload(tabId);
     },
+    detectInputMode: () => detectInputMode(),
+    logError: (error) => { console.error(`${LOG_PREFIX} Popup error:`, error); },
   };
 }
 
 function isHitStats(value: unknown): value is HitStats {
-  if (!isObjectRecord(value)) return false;
-  return (
-    typeof value.highlight === "number" &&
-    typeof value.warn === "number" &&
-    typeof value.hideWork === "number" &&
-    typeof value.totalRules === "number"
-  );
-}
-
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const stats = value as Record<string, unknown>;
+  return typeof stats.highlight === "number" && typeof stats.warn === "number" &&
+    typeof stats.hideWork === "number" && typeof stats.totalRules === "number";
 }
 
 export function createEmptyStats(): HitStats {

@@ -25,7 +25,7 @@ describe("i18n", () => {
     delete (globalThis as typeof globalThis & { chrome?: unknown }).chrome;
 
     expect(t("popupManageRules")).toBe("Manage rules");
-    expect(t("popupMatchesTitle", [3])).toBe("3 matches on this page");
+    expect(t("popupStatHighlightTags", ["Favorite"])).toBe("Favorite tags");
   });
 
   it("falls back to Chinese messages when browser language is Chinese", () => {
@@ -36,7 +36,7 @@ describe("i18n", () => {
     });
 
     expect(t("popupManageRules")).toBe("管理规则");
-    expect(t("popupMatchesTitle", [3])).toBe("当前页命中 3 项");
+    expect(t("popupStatHighlightTags", ["喜欢"])).toBe("喜欢标签");
   });
 
   it("uses chrome i18n messages when available", () => {

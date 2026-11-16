@@ -81,7 +81,19 @@
     "message": "freeform"
   },
   "popupExtensionEnabledAria": {
-    "message": "Extension enabled"
+    "message": "Enable extension on all sites"
+  },
+  "popupGlobalOn": {
+    "message": "Global · On"
+  },
+  "popupGlobalPaused": {
+    "message": "Global · Paused"
+  },
+  "popupQuickAddGlobalPaused": {
+    "message": "Paused globally"
+  },
+  "popupQuickAddSiteInactive": {
+    "message": "Not running on this site"
   },
   "popupSettingsLoadErrorTitle": {
     "message": "Settings could not load."
@@ -90,10 +102,10 @@
     "message": "Try reopening the popup, or open Manage rules."
   },
   "popupOpenAo3PageTitle": {
-    "message": "Open an AO3 page."
+    "message": "Not running on this page"
   },
   "popupOpenAo3PageBody": {
-    "message": "Matches will appear here."
+    "message": "Open an AO3 page, or add a custom website under Manage rules → Run on sites."
   },
   "popupAccessRequiredTitle": {
     "message": "AO3 access is off."
@@ -104,29 +116,26 @@
   "popupGrantAccess": {
     "message": "Allow access"
   },
-  "popupAccessGrantedReload": {
-    "message": "Access granted. Reload the AO3 page."
+  "popupAccessDenied": {
+    "message": "Access was not granted. You can try again."
   },
-  "popupPausedTitle": {
-    "message": "Extension paused."
+  "popupSiteNotAddedTitle": {
+    "message": "Not running on this website"
   },
-  "popupPausedMatchesBody": {
-    "message": "Matches found. Turn on the extension to apply styles."
+  "popupSiteNotAddedBody": {
+    "message": "$1 has not been added. To use it with AO3 pages, open Manage rules, then Run on sites."
   },
-  "popupPausedEmptyBody": {
-    "message": "Turn on the extension to highlight, warn, or collapse works."
+  "popupReloadTitle": {
+    "message": "Page needs a reload"
   },
-  "popupNoMatchesTitle": {
-    "message": "No rule matches on this page yet."
+  "popupReloadBody": {
+    "message": "Access is enabled, but this page has not responded. Reload the page to try again."
   },
-  "popupNoMatchesBody": {
-    "message": "Use Manage rules or hover AO3 tags to add rules."
+  "popupReloadPage": {
+    "message": "Reload page"
   },
-  "popupMatchesTitle": {
-    "message": "$1 matches on this page"
-  },
-  "popupStylesActiveBody": {
-    "message": "Styles are active on this page."
+  "popupReloadError": {
+    "message": "Could not reload. Refresh the page in your browser."
   },
   "popupStatHighlightTags": {
     "message": "$1 tags"
@@ -146,11 +155,17 @@
   "popupTagHoverQuickAddEnabledAria": {
     "message": "Tag hover quick-add enabled"
   },
+  "popupTouchQuickAdd": {
+    "message": "Tag quick-add"
+  },
+  "popupTouchQuickAddDescription": {
+    "message": "Show the + button at the bottom of AO3 pages."
+  },
+  "popupTouchQuickAddEnabledAria": {
+    "message": "Tag quick-add enabled"
+  },
   "popupSaveError": {
     "message": "Could not save. Try again."
-  },
-  "popupCurrentTab": {
-    "message": "Current tab"
   },
   "popupAo3WorkPage": {
     "message": "AO3 work page"
@@ -442,6 +457,18 @@
   },
   "hoverAddRuleFor": {
     "message": "Add rule for “$1”"
+  },
+  "touchQuickAddToggleAria": {
+    "message": "Pick a tag to add a rule"
+  },
+  "touchPickModeHint": {
+    "message": "Tap a tag to add a rule."
+  },
+  "touchPickModeDone": {
+    "message": "Done"
+  },
+  "touchSheetCancel": {
+    "message": "Cancel"
   },
   "toastRuleCreated": {
     "message": "Rule created: $1"

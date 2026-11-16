@@ -12,7 +12,8 @@
 
 body {
   margin: 0;
-  width: 390px;
+  width: min(390px, 100vw);
+  background: #ffffff;
   color: #111111;
   font-family: var(--ao3th-font-ui);
 }
@@ -22,22 +23,27 @@ body {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  min-width: 390px;
-  min-height: 520px;
+  min-width: 0;
   padding: 22px;
   border: 1px solid #111111;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .popup-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 100px;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 
 .popup-brand {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
   gap: 2px;
 }
 
@@ -45,9 +51,10 @@ body {
   margin: 0;
   color: #111111;
   font-family: var(--ao3th-font-display);
-  font-size: 25px;
+  font-size: 24px;
   font-weight: 400;
   line-height: 1.05;
+  text-wrap: balance;
 }
 
 .popup-page-label {
@@ -63,7 +70,13 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  min-width: 42px;
+  width: 100px;
+  min-width: 0;
+  justify-self: end;
+}
+
+.popup-switch-state {
+  white-space: nowrap;
 }
 
 .popup-switch-state,
@@ -76,8 +89,11 @@ body {
 }
 
 .popup-save-status {
-  min-height: 13px;
   text-align: center;
+}
+
+.popup-save-status:empty {
+  display: none;
 }
 
 .popup-save-status[data-status="error"] {
@@ -148,7 +164,7 @@ body {
 
 .popup-switch input:disabled + .popup-switch-track,
 .popup-setting-row input:disabled + .popup-switch-track {
-  cursor: wait;
+  cursor: default;
   opacity: 0.62;
 }
 
@@ -161,31 +177,42 @@ body {
   border-style: dashed;
 }
 
-.popup-notice[data-notice="paused"] {
-  border-color: #990000;
-}
-
 .popup-notice[data-notice="error"] {
   border-color: #990000;
   background: #f5e9e7;
 }
 
-.popup-notice[data-notice="access"] {
-  border-color: #990000;
+.popup-notice[data-notice="error"] .popup-notice-title {
+  color: #990000;
 }
 
-.popup-notice[data-notice="paused"] .popup-notice-title,
-.popup-notice[data-notice="error"] .popup-notice-title,
-.popup-notice[data-notice="access"] .popup-notice-title {
-  color: #990000;
+.popup-notice-title::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  background: #6b7280;
+  vertical-align: 1px;
+}
+
+.popup-notice[data-notice="refresh"] .popup-notice-title::before {
+  background: #507394;
+}
+
+.popup-notice[data-notice="error"] .popup-notice-title::before {
+  background: #990000;
 }
 
 .popup-notice-action {
   margin-top: 12px;
 }
 
-.popup-notice[data-notice="empty"] {
-  border-color: #8ca2c4;
+.popup-notice-feedback {
+  margin: 10px 0 0;
+  color: #990000;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .popup-notice-title {
@@ -201,6 +228,7 @@ body {
   color: #666666;
   font-size: 13px;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .popup-stats,
@@ -211,7 +239,8 @@ body {
 }
 
 .popup-stats[data-state="paused"] .popup-stat-row {
-  opacity: 0.58;
+  background: #f3f4f6;
+  color: #4b5563;
 }
 
 .popup-stat-row {
@@ -272,12 +301,6 @@ body {
   font-weight: 600;
 }
 
-.popup-button-primary[data-state="paused"] {
-  border-color: #b7bec6;
-  background: #d5d8dc;
-  color: #3f4348;
-}
-
 .popup-button:hover,
 .popup-button:focus-visible {
   background: #f3f4f6;
@@ -290,12 +313,6 @@ body {
   background: #7f0000;
 }
 
-.popup-button-primary[data-state="paused"]:hover,
-.popup-button-primary[data-state="paused"]:focus-visible {
-  border-color: #b7bec6;
-  background: #c4cbd2;
-}
-
 .popup-setting-row {
   box-sizing: border-box;
   align-items: center;
@@ -304,6 +321,14 @@ body {
   width: 100%;
   padding: 10px 0;
   border-block: 1px solid #d5d8dc;
+}
+
+.popup-setting-row[data-dimmed="true"] {
+  cursor: default;
+}
+
+.popup-setting-row[data-dimmed="true"] .popup-setting-title {
+  color: #666666;
 }
 
 .popup-setting-copy {
@@ -323,6 +348,25 @@ body {
   color: #111111;
   font-size: 14px;
   line-height: 1.25;
+}
+
+.popup-button:focus-visible,
+.popup-switch input:focus-visible,
+.popup-setting-row input:focus-visible {
+  outline: none;
+}
+
+@media (min-width: 380px) {
+  .popup-title {
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popup-switch-track,
+  .popup-switch-knob {
+    transition: none;
+  }
 }
 
 .popup-setting-description {
