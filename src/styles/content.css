@@ -123,6 +123,9 @@ li.work.blurb[data-ao3th-hidden="collapse"]:not([data-ao3th-expanded="true"]) {
   justify-content: space-between;
   gap: 12px;
   width: 100%;
+  /* The placeholder is a <button>: AO3 skins give every button a fixed
+     one-line height and nowrap, which spilled long collapse reasons out. */
+  height: auto !important;
   margin: 0.5rem 0;
   min-height: 56px;
   padding: 1rem 1rem;
@@ -137,6 +140,7 @@ li.work.blurb[data-ao3th-hidden="collapse"]:not([data-ao3th-expanded="true"]) {
   cursor: pointer;
   font: inherit;
   text-align: left;
+  white-space: normal !important;
 }
 
 li.work.blurb[data-ao3th-hidden="collapse"]:not([data-ao3th-expanded="true"])
@@ -216,12 +220,20 @@ li.work.blurb[data-ao3th-hidden="collapse"][data-ao3th-expanded="true"]
 .ao3th-collapse-message {
   flex: 1 1 auto;
   min-width: 0;
+  /* Long reason lists: at most two lines, then an ellipsis. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
   color: var(--ao3th-muted-text);
   font: 600 15px/1.3 "Funnel Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", Verdana, Geneva, sans-serif;
   text-decoration: none !important;
 }
 
 .ao3th-collapse-action {
+  flex: 0 0 auto;
   color: var(--ao3th-muted-text);
   font: 12px/1.25 "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", monospace;
   text-decoration: none !important;
