@@ -24,6 +24,15 @@ select {
   font: inherit;
 }
 
+select {
+  --ao3th-select-inset: 10px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23111111' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-position: right var(--ao3th-select-inset) center;
+  background-repeat: no-repeat;
+  background-size: 12px 8px;
+}
+
 button {
   cursor: pointer;
 }
@@ -125,19 +134,20 @@ button {
 }
 
 .options-language-control select {
+  --ao3th-select-inset: 9px;
   box-sizing: border-box;
   width: 100%;
   min-height: 34px;
   border: 1px solid #d8d1c8;
   border-radius: 0;
-  background: #ffffff;
+  background-color: #ffffff;
   color: #111111;
-  padding: 0 9px;
+  padding: 0 calc(var(--ao3th-select-inset) * 2 + 12px) 0 var(--ao3th-select-inset);
 }
 
 .options-language-control select:hover,
 .options-language-control select:focus-visible {
-  background: #f8fafb;
+  background-color: #f8fafb;
   border-color: #990000;
   outline: 0;
 }
@@ -272,7 +282,7 @@ button {
   min-height: 40px;
   border: 1px solid #d5d8dc;
   border-radius: 0;
-  background: #ffffff;
+  background-color: #ffffff;
   color: #111111;
 }
 
@@ -283,12 +293,17 @@ button {
   padding: 0 10px;
 }
 
+.form-field select,
+.options-toolbar select {
+  padding-right: calc(var(--ao3th-select-inset) * 2 + 12px);
+}
+
 .options-toolbar input:focus,
 .options-toolbar select:focus,
 .form-field input:focus,
 .form-field select:focus {
   border-color: #990000;
-  background: #f8fafb;
+  background-color: #f8fafb;
   outline: 0;
 }
 

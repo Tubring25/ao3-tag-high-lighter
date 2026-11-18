@@ -1,4 +1,4 @@
-import type { Page, Worker } from "@playwright/test";
+import type { CDPSession, Page, Worker } from "@playwright/test";
 import { AO3_PAGES, expect, openAo3, seedRules, test } from "./support/extension";
 
 const globalToggle = (page: Page) => page.locator("[data-popup-toggle]");
@@ -13,6 +13,17 @@ async function openPopup(popup: Page, currentPage: Page, worker: Worker): Promis
   await popup.reload();
   await expect(popup.locator("[data-popup-global-status]")).not.toHaveText("");
 }
+
+async function setPopupWidth(popup: Page, width: number): Promise<void> {
+  let cdp = touchSessions.get(popup);
+  if (!cdp) {
+    cdp = await popup.context().newCDPSession(popup);
+    touchSessions.set(popup, cdp);
+  }
+  await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: width < 390, maxTouchPoints: 1 });
+  await popup.setViewportSize({ width, height: 700 });
+}
+const touchSessions = new WeakMap<Page, CDPSession>();
 
 for (const language of ["en", "zh_CN"] as const) {
   test.describe(`popup ${language}`, () => {
@@ -70,7 +81,7 @@ for (const language of ["en", "zh_CN"] as const) {
       await expect(quickAddToggle(popup)).not.toBeChecked();
       await expect(popup.locator(".popup-save-status")).toHaveText(["", ""]);
       for (const width of [390, 320]) {
-        await popup.setViewportSize({ width, height: 700 });
+        await setPopupWidth(popup, width);
         expect(await popup.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       }
     });
@@ -99,7 +110,7 @@ for (const language of ["en", "zh_CN"] as const) {
       });
 
       for (const width of [390, 320]) {
-        await popup.setViewportSize({ width, height: 700 });
+        await setPopupWidth(popup, width);
         await globalToggle(popup).focus();
         const on = await measureHeader();
         await popup.keyboard.press("Space");
@@ -116,6 +127,26 @@ for (const language of ["en", "zh_CN"] as const) {
         if (width === 390) expect(on.titleLines).toBe(1);
         else expect(on.titleLines).toBeLessThanOrEqual(2);
       }
+    });
+
+    test("toolbar popup keeps its width when the viewport starts narrow", async ({ page, context, serviceWorker }) => {
+      await openAo3(page, AO3_PAGES.tagWorks);
+      const popup = await context.newPage();
+      // Chrome lays out a toolbar popup in a near-zero viewport, then grows the
+      // window to the content's width. A vw-based width collapses it (one
+      // character per line), so the body must still be 390px here.
+      await popup.setViewportSize({ width: 40, height: 700 });
+      await openPopup(popup, page, serviceWorker);
+
+      const layout = await popup.evaluate(() => {
+        const title = document.querySelector(".popup-title") as HTMLElement;
+        return {
+          bodyWidth: document.body.getBoundingClientRect().width,
+          titleWidth: title.getBoundingClientRect().width,
+        };
+      });
+      expect(layout.bodyWidth).toBe(390);
+      expect(layout.titleWidth).toBeGreaterThan(200);
     });
 
     test("unadded websites have one notice, no permission shortcut, and survive pause", async ({ page, context, serviceWorker }) => {
