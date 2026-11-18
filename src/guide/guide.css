@@ -86,37 +86,44 @@ button {
 
 .guide-demo {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 390px;
-  gap: 18px;
-  align-items: stretch;
   margin-top: 26px;
 }
 
-.guide-preview,
-.guide-builder,
+.guide-demo,
 .guide-matching,
 .guide-next {
   border: 1px solid #d5d8dc;
   background: #ffffff;
 }
 
-.guide-preview {
+.guide-preview,
+.guide-builder {
   display: grid;
-  grid-template-rows: auto 1fr;
-  gap: 16px;
-  box-sizing: border-box;
-  min-height: 380px;
-  padding: clamp(18px, 3vw, 28px);
+  min-width: 0;
+  padding-inline: clamp(18px, 3vw, 28px);
+}
+
+.guide-preview,
+.guide-builder {
   background: #f8fafb;
 }
 
+.guide-preview {
+  gap: 16px;
+  padding-block: clamp(18px, 3vw, 28px);
+}
+
 .guide-builder {
-  display: grid;
-  align-content: start;
   gap: 12px;
-  box-sizing: border-box;
-  min-height: 380px;
-  padding: 18px;
+  padding-block: 18px;
+  border-top: 1px solid #d5d8dc;
+}
+
+.guide-builder-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: start;
 }
 
 .guide-builder h2 {
@@ -411,10 +418,60 @@ button {
   line-height: 1.35;
 }
 
-.guide-work-card.is-hideWork .guide-work-banner {
-  border-left-color: #6b7280;
-  background: #e5e7eb;
+/* Mirrors the content script's collapse placeholder (content.css). */
+.guide-work-card.is-collapsed {
+  padding: 0;
+  border-color: #6b7280;
+  border-left-width: 5px;
+  background: #f3f4f6;
+}
+
+.guide-collapse-bar {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 1rem;
+  border: 0;
+  background: transparent;
   color: #374151;
+  cursor: pointer;
+  text-align: left;
+}
+
+.guide-work-card:not(.is-collapsed) .guide-collapse-bar {
+  min-height: 0;
+  margin-bottom: 12px;
+  padding: 0.45rem 0.65rem;
+  border-left: 4px solid #6b7280;
+  background: #f3f4f6;
+}
+
+.guide-collapse-bar:hover,
+.guide-collapse-bar:focus-visible,
+.guide-work-card:not(.is-collapsed) .guide-collapse-bar:hover,
+.guide-work-card:not(.is-collapsed) .guide-collapse-bar:focus-visible {
+  background: #e5e7eb;
+  outline: 0;
+}
+
+.guide-collapse-message {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: 600 15px/1.3 var(--ao3th-font-ui);
+}
+
+.guide-work-card:not(.is-collapsed) .guide-collapse-message {
+  font: 400 13px/1.35 var(--ao3th-font-ui);
+}
+
+.guide-collapse-action {
+  flex: 0 0 auto;
+  font: 12px/1.25 var(--ao3th-font-mono);
+  white-space: nowrap;
 }
 
 .guide-work-card h3 {
@@ -472,29 +529,10 @@ button {
 }
 
 .guide-result-copy {
-  margin: 18px 0 0;
-  padding-top: 12px;
-  border-top: 1px solid #e3e6e9;
+  margin: 0;
   color: #3f4348;
   font-size: 14px;
   line-height: 1.5;
-}
-
-.guide-meta {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin: 16px 0 0;
-  color: #3f4348;
-  font-size: 12px;
-}
-
-.guide-meta dt {
-  font-weight: 700;
-}
-
-.guide-meta dd {
-  margin: 0;
 }
 
 .guide-matching,
@@ -546,17 +584,12 @@ button {
 
 @media (max-width: 980px) {
   .guide-hero,
-  .guide-demo {
+  .guide-builder-fields {
     grid-template-columns: 1fr;
   }
 
   .guide-primary-link {
     width: fit-content;
-  }
-
-  .guide-preview,
-  .guide-builder {
-    min-height: 0;
   }
 
   .guide-next ol {
@@ -577,8 +610,7 @@ button {
     padding: 16px;
   }
 
-  .guide-preview-top,
-  .guide-meta {
+  .guide-preview-top {
     align-items: start;
     flex-direction: column;
   }

@@ -12,10 +12,17 @@
 
 body {
   margin: 0;
-  width: min(390px, 100vw);
+  width: 390px;
   background: #ffffff;
   color: #111111;
   font-family: var(--ao3th-font-ui);
+}
+
+/* Touch browsers (Firefox Android) open the popup as a full page instead. */
+@media (hover: none) and (pointer: coarse) {
+  body {
+    width: auto;
+  }
 }
 
 .popup-shell {

@@ -578,15 +578,6 @@
   "guideResultCollapse": {
     "message": "列表页会先折叠作品，并显示触发原因。"
   },
-  "guideMetaWords": {
-    "message": "字数"
-  },
-  "guideMetaChapters": {
-    "message": "章节"
-  },
-  "guideMetaKudos": {
-    "message": "Kudos"
-  },
   "guideMatchingModesTitle": {
     "message": "匹配方式"
   },

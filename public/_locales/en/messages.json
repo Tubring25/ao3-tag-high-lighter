@@ -578,15 +578,6 @@
   "guideResultCollapse": {
     "message": "The work collapses on listing pages and shows the matched reason."
   },
-  "guideMetaWords": {
-    "message": "Words"
-  },
-  "guideMetaChapters": {
-    "message": "Chapters"
-  },
-  "guideMetaKudos": {
-    "message": "Kudos"
-  },
   "guideMatchingModesTitle": {
     "message": "Matching modes"
   },

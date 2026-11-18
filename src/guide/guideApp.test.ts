@@ -17,9 +17,7 @@ describe("renderGuideApp", () => {
     expect(container.textContent).toContain("Live AO3-style preview");
     expect(container.textContent).toContain("Hotshot");
     expect(container.textContent).toContain("SarcastCity");
-    expect(container.textContent).toContain("242,931");
-    expect(container.textContent).toContain("50/50");
-    expect(container.textContent).toContain("24,330");
+    expect(container.querySelector(".guide-meta")).toBeNull();
     expect(container.textContent).toContain("Matching modes");
     expect(container.textContent).toContain("What to do next");
     expect(container.querySelectorAll("[data-demo-tag]")).toHaveLength(8);
@@ -43,6 +41,42 @@ describe("renderGuideApp", () => {
     expect(container.textContent).toContain(
       "This work is collapsed by a collapse rule: Gun Violence"
     );
+  });
+
+  it("previews collapse like the listing page: a bar that expands and collapses the work", async () => {
+    const container = document.createElement("div");
+
+    await renderGuideApp(container);
+    getButton(container, '[data-demo-action="hideWork"]').click();
+
+    const card = () => container.querySelector(".guide-work-card") as HTMLElement;
+    const toggle = () => getButton(container, "[data-demo-collapse-toggle]");
+    expect(card().className).toContain("is-collapsed");
+    expect(toggle().textContent).toBe("This work is collapsed by a collapse rule: Firefighter ViClick to expand");
+    expect(card().querySelector("h3")).toBeNull();
+
+    toggle().click();
+    expect(card().className).not.toContain("is-collapsed");
+    expect(toggle().getAttribute("aria-expanded")).toBe("true");
+    expect(toggle().textContent).toBe("Collapsed work is expanded for this page.");
+    expect(card().textContent).toContain("Hotshot");
+
+    // A new collapse rule starts collapsed again, as on a fresh listing page.
+    getButton(container, '[data-demo-tag="Slow Burn"]').click();
+    expect(card().className).toContain("is-collapsed");
+    expect(toggle().textContent).toContain("Slow Burn");
+  });
+
+  it("keeps the preview first, controls below it, and opens the sample work in a new tab", async () => {
+    const container = document.createElement("div");
+
+    await renderGuideApp(container);
+
+    const demo = container.querySelector(".guide-demo") as HTMLElement;
+    expect([...demo.children].map((child) => child.className)).toEqual(["guide-preview", "guide-builder"]);
+    const link = container.querySelector<HTMLAnchorElement>(".guide-work-card h3 a");
+    expect(link?.target).toBe("_blank");
+    expect(link?.rel).toBe("noopener noreferrer");
   });
 
   it("keeps match mode examples visible and updates the selected mode in the preview", async () => {
