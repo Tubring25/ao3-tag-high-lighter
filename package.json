@@ -25,7 +25,7 @@
     "package:firefox-source": "node -e \"require('node:fs').mkdirSync('web-ext-artifacts',{recursive:true})\" && git archive --format=zip --output=web-ext-artifacts/source.zip HEAD"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.13.0",
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "1.57.0",
     "@types/node": "^24.19.2",
     "jsdom": "^25.0.1",
