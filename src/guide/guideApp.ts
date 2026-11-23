@@ -55,6 +55,7 @@ export async function renderGuideApp(
   let selectedTag = DEMO_TAGS[0];
   let selectedAction: DemoAction = "highlight";
   let matchMode: MatchMode = "exact";
+  let collapseExpanded = false;
 
   container.textContent = "";
   const shell = document.createElement("main");
@@ -101,7 +102,10 @@ export async function renderGuideApp(
 
     const title = document.createElement("h2");
     title.textContent = t("guideControls");
-    builder.append(title, createTagPicker(), createActionPicker());
+    const fields = document.createElement("div");
+    fields.className = "guide-builder-fields";
+    fields.append(createTagPicker(), createActionPicker());
+    builder.append(title, fields);
 
     section.append(preview, builder);
     return section;
@@ -119,10 +123,7 @@ export async function renderGuideApp(
         tag.text === selectedTag.text ? `guide-tag is-selected is-${selectedAction}` : "guide-tag";
       button.dataset.demoTag = tag.text;
       button.textContent = tag.text;
-      button.addEventListener("click", () => {
-        selectedTag = tag;
-        rerenderDemo();
-      });
+      button.addEventListener("click", () => selectTag(tag));
       tagList.appendChild(button);
     }
 
@@ -144,6 +145,7 @@ export async function renderGuideApp(
       button.textContent = copy.label;
       button.addEventListener("click", () => {
         selectedAction = action;
+        collapseExpanded = false;
         rerenderDemo();
       });
       actions.appendChild(button);
@@ -274,13 +276,27 @@ export async function renderGuideApp(
     const work = document.createElement("article");
     work.className = getWorkClassName(selectedAction);
 
-    const banner = document.createElement("div");
-    banner.className = "guide-work-banner";
-    banner.textContent = getBannerText();
+    // Explains the preview, so it sits outside the AO3-style card.
+    const result = document.createElement("p");
+    result.className = "guide-result-copy";
+    result.textContent = getActionCopy(selectedAction).result;
+    preview.append(top, work, result);
+
+    if (selectedAction === "hideWork") {
+      work.appendChild(createCollapseBar());
+      if (!collapseExpanded) return;
+    } else if (selectedAction === "warn") {
+      const banner = document.createElement("div");
+      banner.className = "guide-work-banner";
+      banner.textContent = t("contentWarningMessage", [selectedTag.text]);
+      work.appendChild(banner);
+    }
 
     const heading = document.createElement("h3");
     const workLink = createTextElement("a", "Hotshot");
     workLink.href = DEMO_WORK_URL;
+    workLink.target = "_blank";
+    workLink.rel = "noopener noreferrer";
     heading.append(workLink, " ", createTextElement("span", "by SarcastCity"));
 
     const tags = document.createElement("p");
@@ -290,30 +306,45 @@ export async function renderGuideApp(
       tagElement.type = "button";
       tagElement.className = getTagClassName(tag);
       tagElement.textContent = tag.text;
-      tagElement.addEventListener("click", () => {
-        selectedTag = tag;
-        rerenderDemo();
-      });
+      tagElement.addEventListener("click", () => selectTag(tag));
       tags.append(tagElement, " ");
     }
 
-    const result = document.createElement("p");
-    result.className = "guide-result-copy";
-    result.textContent = getActionCopy(selectedAction).result;
+    work.append(heading, tags);
+  }
 
-    const meta = document.createElement("dl");
-    meta.className = "guide-meta";
-    for (const [term, value] of [
-      [t("guideMetaWords"), "242,931"],
-      [t("guideMetaChapters"), "50/50"],
-      [t("guideMetaKudos"), "24,330"],
-    ] as const) {
-      meta.append(createTextElement("dt", term), createTextElement("dd", value));
+  /** Mirrors the content script's collapse placeholder (same copy and toggle). */
+  function createCollapseBar(): HTMLButtonElement {
+    const bar = document.createElement("button");
+    bar.type = "button";
+    bar.className = "guide-collapse-bar";
+    bar.dataset.demoCollapseToggle = "true";
+    bar.setAttribute("aria-expanded", String(collapseExpanded));
+
+    const message = createTextElement(
+      "span",
+      collapseExpanded ? t("contentCollapsedExpanded") : t("contentCollapsedOneReason", [selectedTag.text])
+    );
+    message.className = "guide-collapse-message";
+    bar.appendChild(message);
+    if (!collapseExpanded) {
+      const action = createTextElement("span", t("contentClickToExpand"));
+      action.className = "guide-collapse-action";
+      bar.appendChild(action);
     }
 
-    if (selectedAction !== "highlight") work.appendChild(banner);
-    work.append(heading, tags, result, meta);
-    preview.append(top, work);
+    bar.addEventListener("click", () => {
+      collapseExpanded = !collapseExpanded;
+      rerenderDemo();
+      shell.querySelector<HTMLButtonElement>("[data-demo-collapse-toggle]")?.focus();
+    });
+    return bar;
+  }
+
+  function selectTag(tag: DemoTag): void {
+    selectedTag = tag;
+    collapseExpanded = false;
+    rerenderDemo();
   }
 
   function createMatchingGuide(): HTMLElement {
@@ -397,13 +428,9 @@ export async function renderGuideApp(
   }
 
   function getWorkClassName(action: DemoAction): string {
-    return action === "highlight" ? "guide-work-card" : `guide-work-card is-${action}`;
-  }
-
-  function getBannerText(): string {
-    if (selectedAction === "warn") return t("contentWarningMessage", [selectedTag.text]);
-    if (selectedAction === "hideWork") return t("contentCollapsedOneReason", [selectedTag.text]);
-    return "";
+    if (action === "highlight") return "guide-work-card";
+    if (action === "hideWork" && !collapseExpanded) return "guide-work-card is-hideWork is-collapsed";
+    return `guide-work-card is-${action}`;
   }
 }
 
